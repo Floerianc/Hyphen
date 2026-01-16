@@ -1,0 +1,36 @@
+from typing import (
+    Dict,
+    Tuple,
+)
+from core.visuals import *
+
+WMO_MAP: Dict[int, Tuple[Image, Color]] = {
+    0:      (IMG_SUN, CLR_SUN),
+    1:      (IMG_SUN, CLR_SUN),
+    2:      (IMG_SUN, CLR_SUN),
+    3:      (IMG_SUN, CLR_SUN),
+    45:     (IMG_FOG, CLR_FOG),
+    48:     (IMG_FOG, CLR_FOG),
+    51:     (IMG_DRIZZLE, CLR_BRIGHT_BLUE),
+    53:     (IMG_DRIZZLE, CLR_BRIGHT_BLUE),
+    55:     (IMG_DRIZZLE, CLR_BRIGHT_BLUE),
+    56:     (IMG_DRIZZLE, CLR_BRIGHT_BLUE),
+    57:     (IMG_DRIZZLE, CLR_BRIGHT_BLUE),
+    61:     (IMG_RAINDROP, CLR_BRIGHTER_BLUE),
+    63:     (IMG_RAINDROP, CLR_BRIGHTER_BLUE),
+    65:     (IMG_RAINDROP, CLR_BRIGHTER_BLUE),
+    66:     (IMG_RAINDROP, CLR_BRIGHTER_BLUE),
+    67:     (IMG_RAINDROP, CLR_BRIGHTER_BLUE),
+    71:     (IMG_SNOWFLAKE, CLR_WHITE),
+    73:     (IMG_SNOWFLAKE, CLR_WHITE),
+    75:     (IMG_SNOWFLAKE, CLR_WHITE),
+    77:     (IMG_SNOWFLAKE, CLR_WHITE),
+    80:     (IMG_RAIN_SHOWER, CLR_DARK_BRIGHT_BLUE),
+    81:     (IMG_RAIN_SHOWER, CLR_DARK_BRIGHT_BLUE),
+    82:     (IMG_RAIN_SHOWER, CLR_DARK_BRIGHT_BLUE),
+    85:     (IMG_SNOW_SHOWER, CLR_WHITE),
+    86:     (IMG_SNOW_SHOWER, CLR_WHITE),
+    95:     (IMG_THUNDER, CLR_YELLOW),
+    96:     (IMG_THUNDER, CLR_YELLOW),
+    99:     (IMG_THUNDER, CLR_YELLOW),
+}

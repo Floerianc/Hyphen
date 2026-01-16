@@ -1,0 +1,23 @@
+{
+    "line": {
+        "name": "218",
+        "direction": "Heukoppel",
+        "origin": "S Rübenkamp",
+        "type": {
+            "simpleType": "BUS",
+            "shortInfo": "Bus",
+            "longInfo": "Niederflur Stadtbus",
+            "model": "Niederflur Stadtbus"
+        },
+        "id": "HHA-B:218_HHA-B",
+        "dlid": "de:hvv:218:"
+    }, 
+    "directionId": 1,
+    "timeOffset": 5, 
+    "serviceId": 92681,
+    "station": {
+        "combinedName": "Alfred-Mahlau-Weg",
+        "id": "Master:70050",
+        "globalId": "de:02000:70050"
+    }
+}
