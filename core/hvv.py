@@ -1,7 +1,6 @@
 import platform
 import requests
 import dacite
-from requests import exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -194,15 +193,25 @@ class HVV:
     
     @log_event("Sending request to HVV GeoFox")
     def get_geofox_response(self) -> GeoFoxResponse:
+        rsp = None
         try:
-            rsp = requests.post(url=self.GEOFOX_URL, headers=self.geofox_header, json=self.geofox_payload, timeout=20).json()
+            rsp = requests.post(
+                url=self.GEOFOX_URL,
+                headers=self.geofox_header,
+                json=self.geofox_payload,
+                timeout=20
+            ).json()
             return self._convert_response(data=rsp)
-        except exceptions.ReadTimeout as rte:
-            log_event("Connection timeout")
-        except exceptions.ConnectionError as ce:
-            log_event("Site does not exist. Connection error")
         except Exception as e:
-            print(e)
+            if rsp:
+                return GeoFoxResponse(
+                    returnCode=rsp["returnCode"],
+                    time=dacite.from_dict(data_class=GeoFoxTime, data=rsp["time"]),
+                    departures=[]
+                )
+            else:
+                log_event(f"No response from HVV GeoFox. Can't return bus times.\nException: {e}")
+                return GeoFoxResponse("NOT OK", GeoFoxTime("00.00.0000", "00:00"), [])
     
     @log_event("Getting bus arrivals...")
     def set_bus_arrivals(self) -> None:

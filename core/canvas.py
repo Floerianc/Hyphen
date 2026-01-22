@@ -51,13 +51,14 @@ class Matrix(object):
         Arguments:
             color -- Color of the border (check ./images.py Color dataclass)
         """
+        r, g, b = color.r, color.g, color.b
         for x in range(0, self.matrix.width-1):
-            self.canvas.SetPixel(x, 0, color.r, color.g, color.b)
-            self.canvas.SetPixel(x, self.matrix.height-1, color.r, color.g, color.b)
+            self.canvas.SetPixel(x, 0, r, g, b)
+            self.canvas.SetPixel(x, self.matrix.height-1, r, g, b)
 
         for y in range(0, self.matrix.height):
-            self.canvas.SetPixel(0, y, color.r, color.g, color.b)
-            self.canvas.SetPixel(self.matrix.width-1, y, color.r, color.g, color.b)
+            self.canvas.SetPixel(0, y, r, g, b)
+            self.canvas.SetPixel(self.matrix.width-1, y, r, g, b)
 
     def draw_horizontal(
             self, 
@@ -80,8 +81,9 @@ class Matrix(object):
             g -- Amount of Green    (default: {255})
             b -- Amount of Blue     (default: {255})
         """
+        r, g, b = color.r, color.g, color.b
         for x in range(1, self.matrix.width-1):
-            self.canvas.SetPixel(x, y, color.r, color.g, color.b)
+            self.canvas.SetPixel(x, y, r, g, b)
     
     def draw_box(
         self,
@@ -144,16 +146,16 @@ class Matrix(object):
             start_y -- Anchor Y-Position of image
         """
         set_pixel = self.canvas.SetPixel
-        for y in range(len(image)):
-            line = image[y]
-            pixel_y = start_y + y
+        for y_pos in range(len(image)):
+            line = image[y_pos]
+            pixel_y = start_y + y_pos
             
-            for x in range(len(line)):
-                pixel = line[x]
+            for x_pos in range(len(line)):
+                pixel = line[x_pos]
                 if not pixel.on:
                     continue
                 
-                pixel_x = start_x + x
+                pixel_x = start_x + x_pos
                 c = pixel.color
                 if c:
                     set_pixel(pixel_x, pixel_y, c.r, c.g, c.b)
@@ -185,7 +187,7 @@ class Matrix(object):
         if os.path.exists(os.path.abspath(path)):
             return path
         else:
-            raise ValueError("Font size does not exist in available fonts.")
+            raise ValueError(f"Font size does not exist in available fonts.\nPath: {os.path.abspath(path)}")
     
     def run(self) -> None:
         print("Running")
@@ -231,6 +233,3 @@ class Matrix(object):
             sys.exit(0)
 
         return True
-
-if __name__ == "__main__":
-    m = Matrix()

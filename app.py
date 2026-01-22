@@ -2,15 +2,21 @@
 # Program entirely written by github.com/Floerianc 
 # +++ Run as root! +++
 
+__version__ = "3.0.0"
 
 # external imports
 import os
-import sys
 import time
 from threading import Thread
 from typing import (
     Callable,
     List,
+)
+
+os.chdir(
+    os.path.dirname(
+        os.path.realpath(__file__)
+    )
 )
 
 # local imports
@@ -22,17 +28,11 @@ from core.visuals import *
 from core.dates import DateHandler
 from core.weather import WeatherAgent
 from common.logger import log_event
+from common.typing import Thread
 from widgets.RainBar import RainBar
 from widgets.PrecipitationForecast import PrecipitationForecastWidget
-from util.samplebase import SampleBase
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
-
-os.chdir(
-    os.path.dirname(
-        os.path.realpath(__file__)
-    )
-)
+# sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 
 class Hyphen(Matrix):
     @log_event("Initializing Program...")
@@ -49,13 +49,23 @@ class Hyphen(Matrix):
         self.hvv = hvv.HVV(self.date_handler)
 
         # Threads
-        dt_thread = Thread(target=threads.refresh_time, args=[self.date_handler,])
-        weather_thread = Thread(target=threads.refresh_ui, args=[self.weather, self.date_handler,])
-        hvv_thread = Thread(target=threads.refresh_busses, args=[self.hvv,])
+        self.dt_thread = Thread(target=threads.refresh_time, args=[self.date_handler,], daemon=True)
+        self.weather_thread = Thread(target=threads.refresh_ui, args=[self.weather, self.date_handler,], daemon=True)
+        self.hvv_thread = Thread(target=threads.refresh_busses, args=[self.hvv,], daemon=True)
 
-        dt_thread.start()
-        weather_thread.start()
-        hvv_thread.start()
+        self.dt_thread.start()
+        self.weather_thread.start()
+        self.hvv_thread.start()
+        
+        self.welcome_message = f"""
+        Welcome to my LED Panel program.
+        (Author: https://github.com/Floerianc)
+        
+        You are currently running the Version {__version__}.
+        
+        To run this you really need a stable WiFi connection.
+        Have fun :)
+        """
 
     # def display_message(self, msg: str, timeout_duration: int = 10) -> None:
     #     print("Displaying Message")
@@ -194,16 +204,19 @@ class Hyphen(Matrix):
         pfw.render()
 
 if __name__ == "__main__":
-    app = Hyphen()
-    if (not app.process()):
-        pass
+    CHECK_UP = True
 
-# TODO: Different border depending on weather       (X)
-# TODO: Icons for every weather                     (X)
-# TODO: Functionality for weather forecast          (X) (OpenMeteo)
-# TODO: Add MultiThreading for better performance   (X)
-# TODO: Start-up Animations                         (/)
-# TODO: Code clean-up and comments                  (X)
+    if CHECK_UP:
+        import tests
+        tests.pretty_tests()
+
+    app = Hyphen()
+    print(app.welcome_message)
+
+    try:
+        app.process()
+    except KeyboardInterrupt:
+        pass
 
 
 """ TODO
@@ -248,16 +261,19 @@ if __name__ == "__main__":
                 - Drawing all components to the screen                                  (X)
                 - PlayWright does NOT work on Raspberry Pi 2 soooo Selentium            (X)
                     - Found work-around for chromium drivers on different OS            (X)
-    Converter for images instead of large pixel matrices                                (NOT STARTED YET)
+    Converter for images instead of large pixel matrices                                (X)
+        - Built converter from .png to pixels                                           (X)
+        - Fixed file path problem                                                       (X)
     Fix 24/7 Problem                                                                    (X)
         - Switch through windows/pages                                                  (X)
         - Fix weather requests on 12 am                                                 (X)
             - I guess I solved it by not using the function causing it anymore          (X)
+        - HVV doesn't return "departures" sometimes, do better error handling           (X)
     Optimization:                                                                       (X)
         - Optimize Selenium options                                                     (X)
         - Research if other browsers are faster                                         (X)
             - Ig there's Htmlunit, but its not supported in the Python bindings?        (X)
-    Alternative for Selenium                                                            (IN PROGRESS...)
+    Alternative for Selenium                                                            (X)
         - Use GeoFox API instead                                                        (X)
             - Get API URL from Fetch response in Network Tab (F12)                      (X)
             - Copy Headers and payload from POST request                                (X)
@@ -269,6 +285,7 @@ if __name__ == "__main__":
             - Created a converter for the JSON response to the dataclass                (X)
         - Find a way to include delay (for some reason missing?)                        (X)
     Workflow for exiting                                                                (IN PROGRESS...)
+        - Clean exit for CRTL-C but still error traceback                               (X)
     HUGE PROBLEM: Can't deploy on Raspberry Pi 3                                        (FIX)
         Can't compile Numpy and Pandas                                                  (FIX)
         rgbmatrix.core does not exist                                                   (FIX)
@@ -300,11 +317,11 @@ if __name__ == "__main__":
             Test HVV response                                                           (X)
             Test fonts                                                                  (X)
     EVEN MORE FUCKING FLICKERING WOOOOO                                                 (X)
-        Rework the FUCKING Core again                                                   (IN PROGRESS...)
+        Rework the FUCKING Core again                                                   (Actually nah)
             Canvas.py                                                                   (X)
                 Draw box and image                                                      (X)
         Is it smoother with the original samplebase.py instead of my implementation?    (X)
             Yes.                                                                        (X)
             So, apparently I have implemented it weirdly and now it works               (X)
-
+    Added a cool little start-up checkup lol                                            (X)
 """

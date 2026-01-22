@@ -1,8 +1,57 @@
+import os
+from typing import (
+    Any,
+    Iterable,
+    Tuple,
+    List
+)
+from PIL import (
+    Image,
+    ImageFile
+)
+
+import util.utils as utils
 from common.typing import (
     Color,
     Pixel,
-    Image
 )
+from util.utils import ICON_PATH
+
+
+class MatrixImage:
+    def __init__(
+        self,
+        filename: str
+    ) -> None:
+        super().__init__()
+        self.path = utils.resolve_path(filename)
+        self.pixel_matrix: List[List[Pixel]] = [[]]
+        
+        img = Image.open(self.path)
+        self.pixel_matrix = self._img_to_px(img)
+    
+    def _img_to_px(
+        self,
+        img: ImageFile.ImageFile,
+    ) -> List[List[Pixel]]:
+        # img[x, y] = RGBA value
+        pixels: List[List[Pixel]] = []
+        rgba_values = img.convert("RGBA").getdata()
+        
+        width, height = img.size
+        position = -width
+        
+        for y_pos in range(height):
+            pixels.append(list())
+            position += width
+            
+            for x_pos in range(width):
+                pixel = rgba_values[position + x_pos]
+                r, g, b, a = pixel
+                c = Color(r, g, b)
+                px = Pixel(True if a else False, color=c)
+                pixels[y_pos].append(px)
+        return pixels
 
 
 CLR_RED                 =   Color(255,    0,      0)
@@ -23,116 +72,24 @@ CLR_CLOUD_1             =   Color(212,    212,    212)
 
 
 # FOR WEATHER ICONS: 9x9 PIXELS!
-# Ja, ich hätte das auch mit .pngs oder so machen können, 
-# die ich dann parse, aber ich bin zu faul dafür gerade und 
-# mir geht langsam die Zeit aus, also bitte verzeiht mir 
-# diesen absolut gottlosen Code
 
 #0, 1, 2, 3
-IMG_SUN: Image = [
-    [Pixel(False),              Pixel(True, CLR_DARKER_SUN),     Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(False)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN),         Pixel(True, CLR_SUN)],
-    [Pixel(True, CLR_DARKEST_SUN),  Pixel(True, CLR_DARKEST_SUN),    Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN),  Pixel(True, CLR_DARKER_SUN)],
-    [Pixel(False),              Pixel(True, CLR_DARKER_SUN),     Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKEST_SUN), Pixel(True, CLR_DARKEST_SUN), Pixel(False)]
-]
+IMG_SUN = MatrixImage(os.path.join(ICON_PATH, "IMG_SUN.png")).pixel_matrix
 #45 ,48
-IMG_FOG: Image = [
-    [Pixel(False),      Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False)],
-    [Pixel(True, CLR_FOG),  Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(False),       Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(False),       Pixel(True, CLR_FOG)],
-    [Pixel(False),      Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False)],
-    [Pixel(True, CLR_FOG),  Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG)],
-    [Pixel(False),      Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False)],
-    [Pixel(True, CLR_FOG),  Pixel(True, CLR_FOG),   Pixel(False),       Pixel(False),       Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG)],
-    [Pixel(False),      Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False)],
-    [Pixel(True, CLR_FOG),  Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(False),       Pixel(False),       Pixel(True, CLR_FOG),   Pixel(True, CLR_FOG),   Pixel(False),       Pixel(True, CLR_FOG)],
-    [Pixel(False),      Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False),       Pixel(False)],
-]
+IMG_FOG = MatrixImage(os.path.join(ICON_PATH, "IMG_FOG.png")).pixel_matrix
 #51, 53, 55. 56, 57
-IMG_DRIZZLE: Image = [
-    [Pixel(False), Pixel(False),                    Pixel(False), Pixel(False),                     Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False)],
-    [Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),  Pixel(False), Pixel(False),                     Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False)],
-    [Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),  Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),   Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),  Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),   Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(False),                    Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),   Pixel(False),                   Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(False),                    Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),   Pixel(False),                   Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),  Pixel(False), Pixel(False),                     Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(True, CLR_BRIGHT_BLUE),  Pixel(False), Pixel(False),                     Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),                   Pixel(False)],
-    [Pixel(False), Pixel(False),                    Pixel(False), Pixel(False),                     Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),                   Pixel(False)],
-]
+IMG_DRIZZLE = MatrixImage(os.path.join(ICON_PATH, "IMG_DRIZZLE.png")).pixel_matrix
 #61, 63, 65. 66. 67
-IMG_RAINDROP: Image = [
-[Pixel(False),                      Pixel(False),                       Pixel(False),                       Pixel(True, CLR_BRIGHT_BLUE),     Pixel(False),                       Pixel(False),                       Pixel(False)],
-[Pixel(False),                      Pixel(False),                       Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(False),                       Pixel(False)],
-[Pixel(False),                      Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(False)],
-[Pixel(True, CLR_BRIGHTER_BLUE),  Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE)],
-[Pixel(True, CLR_BRIGHTER_BLUE),  Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE)],
-[Pixel(True, CLR_BRIGHTER_BLUE),  Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_DARK_BRIGHT_BLUE)],
-[Pixel(True, CLR_BRIGHTER_BLUE),  Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_DARK_BRIGHT_BLUE)],
-[Pixel(True, CLR_BRIGHTER_BLUE),  Pixel(True, CLR_BRIGHTER_BLUE),   Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(True, CLR_DARK_BRIGHT_BLUE)],
-[Pixel(False),                      Pixel(True, CLR_BRIGHTER_BLUE),   Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_BRIGHT_BLUE),     Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(False)],
-[Pixel(False),                      Pixel(False),                       Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(True, CLR_DARK_BRIGHT_BLUE),Pixel(False), Pixel(False)],
-]
+IMG_RAINDROP = MatrixImage(os.path.join(ICON_PATH, "IMG_RAINDROP.png")).pixel_matrix
 #71, 73, 75, 77
-IMG_SNOWFLAKE: Image = [
-    [Pixel(True),   Pixel(False),   Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False),   Pixel(False),   Pixel(True)],
-    [Pixel(False),  Pixel(True),    Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False)],
-    [Pixel(True),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(True),    Pixel(True),    Pixel(False),   Pixel(True),    Pixel(True)],
-    [Pixel(False),  Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(True),    Pixel(False),   Pixel(False),   Pixel(False),   Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False)],
-    [Pixel(True),   Pixel(False),   Pixel(False),   Pixel(False),   Pixel(True),    Pixel(False),   Pixel(False),   Pixel(False),   Pixel(True)]
-]
+IMG_SNOWFLAKE = MatrixImage(os.path.join(ICON_PATH, "IMG_SNOWFLAKE.png")).pixel_matrix
 #80, 81, 82
-IMG_RAIN_SHOWER: Image = [
-    [Pixel(True, CLR_CLOUD_0),    Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_0)],
-    [Pixel(True, CLR_CLOUD_1),    Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_1)],
-    [Pixel(False),                  Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(True, CLR_CLOUD_1)],
-    [Pixel(False),                  Pixel(False),                   Pixel(False),                   Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(False),                   Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(False)],
-    [Pixel(False),                  Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)],
-    [Pixel(False),                  Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),               Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)],
-    [Pixel(False),                  Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),               Pixel(True, CLR_BRIGHT_BLUE)],
-    [Pixel(False),                  Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),               Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(False),               Pixel(True, CLR_BRIGHT_BLUE)],
-    [Pixel(False),                  Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),                   Pixel(True, CLR_BRIGHT_BLUE), Pixel(False),               Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)]
-]    
+IMG_RAIN_SHOWER = MatrixImage(os.path.join(ICON_PATH, "IMG_RAIN_SHOWER.png")).pixel_matrix
 #85, 86
-IMG_SNOW_SHOWER: Image = [
-    [Pixel(True, CLR_CLOUD_0),    Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_0)],
-    [Pixel(True, CLR_CLOUD_1),    Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_0),     Pixel(True, CLR_CLOUD_0), Pixel(True, CLR_CLOUD_1)],
-    [Pixel(False),                  Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(True, CLR_CLOUD_1)],
-    [Pixel(False),                  Pixel(False),                   Pixel(False),                   Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(False),                   Pixel(True, CLR_CLOUD_1),     Pixel(True, CLR_CLOUD_1), Pixel(False)],
-    [Pixel(False),                  Pixel(True, CLR_WHITE),       Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)],
-    [Pixel(False),                  Pixel(True, CLR_WHITE),       Pixel(False),                   Pixel(True, CLR_WHITE), Pixel(False),                     Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)],
-    [Pixel(False),                  Pixel(False),                   Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False),                   Pixel(True, CLR_WHITE),       Pixel(False),               Pixel(True, CLR_WHITE)],
-    [Pixel(False),                  Pixel(False),                   Pixel(True, CLR_WHITE),       Pixel(False),                   Pixel(False),               Pixel(True, CLR_WHITE),       Pixel(False),                   Pixel(False),               Pixel(True, CLR_WHITE)],
-    [Pixel(False),                  Pixel(True, CLR_WHITE),       Pixel(False),                   Pixel(True, CLR_WHITE), Pixel(False),                     Pixel(False),                   Pixel(False),                   Pixel(False),               Pixel(False)]
-]
+IMG_SNOW_SHOWER = MatrixImage(os.path.join(ICON_PATH, "IMG_SNOW_SHOWER.png")).pixel_matrix
 #95, 96, 99
-IMG_THUNDER: Image = [
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),           Pixel(False),           Pixel(False),           Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),           Pixel(False),           Pixel(False),           Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),           Pixel(False),           Pixel(False),           Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),           Pixel(False),           Pixel(False),           Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(False),           Pixel(False),           Pixel(False),           Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(False),           Pixel(False),           Pixel(False),           Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-    [Pixel(False),  Pixel(False),           Pixel(False),           Pixel(False),           Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(True, CLR_YELLOW),    Pixel(False),       Pixel(False)],
-]
+IMG_THUNDER = MatrixImage(os.path.join(ICON_PATH, "IMG_THUNDER.png")).pixel_matrix
 
-HVV_LOGO_BASE: Image = [
-    [Pixel(False),  Pixel(False),   Pixel(False),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False),   Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False)],
-    [Pixel(True, CLR_RED),  Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED)],
-    [Pixel(False),  Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False),   Pixel(False)],
-    [Pixel(False),  Pixel(False),   Pixel(False),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(True, CLR_RED),   Pixel(False),   Pixel(False),   Pixel(False)],
-]
+
+
+HVV_LOGO_BASE = MatrixImage(os.path.join(ICON_PATH, "HVVBASE.png")).pixel_matrix

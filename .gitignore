@@ -12,3 +12,7 @@ wheels/
 # Other
 .mypy_cache
 rgbmatrix
+.cache
+.cache.sqlite
+util/samplebase.py
+log.log

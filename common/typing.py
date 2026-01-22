@@ -1,14 +1,18 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import (
     datetime,
     timedelta
 )
 from typing import (
+    Any,
+    Iterable,
     List,
+    Mapping,
     Tuple,
-    Dict,
     Optional
 )
+from threading import Thread
 
 @dataclass
 class Color:
@@ -32,7 +36,6 @@ class Pixel:
     on: bool
     color: Optional[Color] = None
 
-Image = List[List[Pixel]]
 
 @dataclass
 class BusArrival:
@@ -88,3 +91,25 @@ class GeoFoxResponse:
     returnCode: str
     time: GeoFoxTime
     departures: List[GeoFoxDeparture]
+
+
+# Unused for now
+class StopableThread(Thread):
+    def __init__(self, group: None = None, target: Callable[..., object] | None = None, name: str | None = None, args: Iterable[Any] = ..., kwargs: Mapping[str, Any] | None = None, *, daemon: bool | None = None) -> None:
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+        self.stop: bool = False
+        self.target = target
+        self.args = args
+    
+    @property
+    def stopped(self) -> bool:
+        return self.stop
+    
+    def set_stopped(self, boolean: bool) -> None:
+        self.stop = boolean
+    
+    def run(self) -> None:
+        while True and not self.stopped and self.target:
+            self.target(*self.args)
+
+Image = List[List[Pixel]]

@@ -1,6 +1,11 @@
 import platform
 import os
 from dataclasses import dataclass
+from colorama import Fore
+from typing import (
+    Callable,
+    List
+)
 
 from core.hvv import HVV
 from core.weather import WeatherAgent
@@ -60,8 +65,6 @@ def _test_hvv() -> TestResult:
         hvv.set_bus_arrivals()
         # rsp = requests.post(url=hvv.GEOFOX_URL, headers=hvv.geofox_header, json=hvv.geofox_payload, timeout=20).json()
         # cv_rsp = hvv._convert_response(data=rsp)
-        print(hvv.busses != None)
-        print(hvv.busses)
         return TestResult(True, "Success!")
     except Exception as e:
         return TestResult(False, str(e))
@@ -101,10 +104,25 @@ def _test_weather_rsp() -> TestResult:
     except Exception as e:
         return TestResult(False, str(e))
 
-if __name__ == "__main__":
+def test() -> None:
     print(_test_weather_cache().msg)
     print(_test_hvv().msg)
     print(_test_imports().msg)
     print(_test_fonts().msg)
     print(_test_weather_rsp().msg)
     print(_test_matrix().msg)
+
+def pretty_tests() -> None:
+    tests: List[Callable] = [
+        _test_weather_cache,
+        _test_hvv,
+        _test_imports,
+        _test_fonts,
+        _test_weather_rsp,
+        _test_matrix
+    ]
+    for test in tests:
+        print(f"Running Test {Fore.LIGHTGREEN_EX}\"{test.__name__}\"{Fore.RESET}\t{test().msg}")
+
+if __name__ == "__main__":
+    test()
