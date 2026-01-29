@@ -4,6 +4,7 @@ cache-requests==4.0.0
 cattrs==25.1.1
 certifi==2025.11.12
 charset-normalizer==3.4.2
+colorama==0.4.6
 dacite==1.9.2
 flatbuffers==25.2.10
 greenlet==3.3.0

@@ -6,6 +6,7 @@ from datetime import (
 )
 from typing import (
     Any,
+    Dict,
     Iterable,
     List,
     Mapping,
@@ -95,7 +96,7 @@ class GeoFoxResponse:
 
 # Unused for now
 class StopableThread(Thread):
-    def __init__(self, group: None = None, target: Callable[..., object] | None = None, name: str | None = None, args: Iterable[Any] = ..., kwargs: Mapping[str, Any] | None = None, *, daemon: bool | None = None) -> None:
+    def __init__(self, group: None = None, target: Callable[..., object] | None = None, name: str | None = None, args: Iterable[Any] = ..., kwargs: Mapping[str, Any] | None = None, *, daemon: bool | None = None) -> None:    # type: ignore
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         self.stop: bool = False
         self.target = target
@@ -112,4 +113,21 @@ class StopableThread(Thread):
         while True and not self.stopped and self.target:
             self.target(*self.args)
 
+
 Image = List[List[Pixel]]
+
+@dataclass
+class PollenSeverity:
+    description: str
+    color: Color
+
+
+SeverityMap = Dict[str, PollenSeverity]
+
+
+@dataclass
+class Box:
+    x1: int
+    x2: int
+    y1: int
+    y2: int

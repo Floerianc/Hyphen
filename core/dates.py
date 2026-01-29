@@ -1,3 +1,4 @@
+import pytz
 from datetime import datetime
 
 class DateHandler:
@@ -7,13 +8,23 @@ class DateHandler:
 
     Additionally, it can also account for timezones :)
     """
-    def __init__(self) -> None:
+    def __init__(
+        self,
+    ) -> None:
         """
         __init__ Initializes the DateHandler
         """
-        self.tz = datetime.now().astimezone().tzinfo
-        self.date = datetime.now()
-        self.tzname = datetime.tzname(self.date)
+        tz = None
+        
+        self.date = datetime.now(tz)
+        self.tz = self.date.astimezone(tz).tzinfo
+        self.tzname = self.tz.tzname(self.date.astimezone(tz))
+        
+        if not self.tzname:
+            raise ValueError(
+                "Couldn't find a valid timezone name. Maybe try to "
+                "change the timezone in the core/dates.py file."
+            )
 
     def update_datetime(self) -> None:
         """
@@ -54,3 +65,12 @@ class DateHandler:
             Current date as string.
         """
         return self.date.strftime("%a: %d.%m.%Y")
+
+
+if __name__ == "__main__":
+    import sys
+    print(sys.argv)
+    d = DateHandler()
+    print(d.tzname)
+    print(d.date_string)
+    print(d.clock_string)

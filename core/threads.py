@@ -3,12 +3,12 @@ from core.hvv import HVV
 from core.weather import WeatherAgent
 from core.dates import DateHandler
 
-def refresh_ui(w: WeatherAgent, d: DateHandler):
+def refresh_ui(w: WeatherAgent) -> None:
     while True:
-        w.__init__(d)
+        w.update()
         time.sleep(60)
 
-def refresh_time(d: DateHandler):
+def refresh_time(d: DateHandler) -> None:
     while True:
         d.update_datetime()
         time.sleep(0.5)

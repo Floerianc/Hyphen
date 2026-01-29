@@ -1,8 +1,13 @@
 import requests_cache
+import openmeteo_requests
+from numpy import ndarray
+from openmeteo_sdk.VariablesWithTime import VariablesWithTime
+from retry_requests import retry
 from typing import (
+    Optional,
     List,
     Union,
-    Tuple
+    Tuple,
 )
 from core.visuals import (
     Pixel,
@@ -28,102 +33,124 @@ class WeatherAgent:
         self.max_forecast_hours = 6
         
         self.session = requests_cache.CachedSession(
-            ".cache",
-            expire_after=3600,
+            cache_name='.cache',
+            expire_after=3600
         )
+        self.retry_session = retry(
+            self.session,
+            retries=5,
+            backoff_factor=0.2
+        )
+        self.openmeteo = openmeteo_requests.Client(session=self.retry_session)
         
         self.data = self._fetch_weather()
-        self.hourly = self.data.get("hourly", {})
 
-    def _fetch_weather(self) -> dict:
+    def _fetch_weather(self) -> Optional[VariablesWithTime]:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
             "latitude": 53.55,
             "longitude": 9.9333,
-            "hourly": (
-                "temperature_2m,"
-                "precipitation_probability,"
-                "precipitation,"
-                "weather_code"
-            ),
+            "hourly": ["temperature_2m", "precipitation_probability", "precipitation", "weather_code"],
             "models": "best_match",
-            "timezone": self.date_handler.tzname,
+            "timezone": "auto",
             "forecast_days": 3,
             "timeformat": "unixtime",
         }
         try:
-            response = self.session.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except Exception as exc:
-            log_event(f"Weather API request failed: {exc}")
-            return {}
+            rsps = self.openmeteo.weather_api(url, params=params)
+            rsp = rsps[0]
+            return rsp.Hourly()
+        except Exception as e:
+            log_event(f"Weather API request failed: {str(e)}")
+            return None
+    
+    def update(self) -> None:
+        new_data = self._fetch_weather()
+        if new_data:
+            self.data = new_data
 
-    def _hourly_list(
-        self,
-        key: str
-    ) -> List[Union[int, float]]:
-        values = self.hourly.get(key)
-        if isinstance(values, list):
-            return values
-        return []
+    # def _hourly_list(
+    #     self,
+    #     key: str
+    # ) -> List[Union[int, float]]:
+    #     values = self.hourly.get(key)
+    #     if isinstance(values, list):
+    #         return values
+    #     return []
     
     @property
     def hour_index(self) -> int:
-        return self.date_handler.date.hour - 1
+        return self.date_handler.date.hour
     
     @property
     def current_temperature(self) -> float:
-        temps = self._hourly_list("temperature_2m")
-        try:
-            return float(temps[self.hour_index])
-        except (IndexError, ValueError):
-            return -1.0
+        if self.data:
+            temps = self.data.Variables(0).ValuesAsNumpy()  # type: ignore
+            try:
+                return float(temps[self.hour_index])
+            except (IndexError, ValueError) as e:
+                print(str(e))
+                return -100
+        else:
+            return -200
     
     @property
     def rain_forecast_avg(self) -> Union[int, float]:
-        probs = self._hourly_list("precipitation_probability")
-        start = self.hour_index
-        
-        if not probs or start < 0:
+        if self.data:
+            probs: ndarray = self.data.Variables(1).ValuesAsNumpy()  # type: ignore
+            start = self.hour_index
+            
+            if probs.size == 0 or start < 0:
+                return -1
+            
+            end = min(start + self.max_forecast_hours, len(probs))
+            window = probs[start:end]
+            
+            return self.average(list(window))
+        else:
             return -1
-        
-        end = min(start + self.max_forecast_hours, len(probs))
-        window = probs[start:end]
-        
-        return self.average(window)
 
     def precipitation_forecast(self, hours: int) -> List[float]:
-        prec = self._hourly_list("precipitation")
-        start = self.hour_index
-        
-        if not prec or start < 0:
+        if self.data:
+            prec: ndarray = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
+            start = self.hour_index
+            
+            if prec.size == 0 or start < 0:
+                print(prec, start)
+                return []
+            
+            end = min(start + hours, len(prec))
+            return [float(p) for p in prec[start:end]]
+        else:
             return []
-        
-        end = min(start + hours, len(prec))
-        return [float(p) for p in prec[start:end]]
 
     @property
     def precipitation(self) -> float:
-        prec = self._hourly_list("precipitation")
-        try:
-            return float(prec[self.hour_index + 1])
-        except (IndexError, ValueError):
-            return 0.0
+        if self.data:
+            prec = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
+            try:
+                return float(prec[self.hour_index + 1])
+            except (IndexError, ValueError):
+                return 0.0
+        else:
+            return -1.0
 
     @property
     def weather_code(self) -> int:
-        codes = self._hourly_list("weather_code")
-        try:
-            return int(codes[self.hour_index])
-        except (IndexError, ValueError):
-            return -1
+        if self.data:
+            codes = self.data.Variables(3).ValuesAsNumpy()  # type: ignore
+            try:
+                return int(codes[self.hour_index])
+            except (IndexError, ValueError):
+                return -1
+        else:
+            return -2
 
     @property
     def weather(self) -> Tuple[Image, Color]:
         code = self.weather_code
         if code != -1:
-            return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))
+            return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))  # type: ignore
         return ([[Pixel(True)]], CLR_RED)
 
     def average(

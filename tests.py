@@ -1,5 +1,13 @@
 import platform
+import pkg_resources
 import os
+
+os.chdir(
+    os.path.dirname(
+        os.path.realpath(__file__)
+    )
+)
+
 from dataclasses import dataclass
 from colorama import Fore
 from typing import (
@@ -14,11 +22,6 @@ from core.canvas import Matrix
 from common.typing import Color
 from util.utils import FONT_PATH
 
-os.chdir(
-    os.path.dirname(
-        os.path.realpath(__file__)
-    )
-)
 
 @dataclass
 class TestResult:
@@ -49,8 +52,8 @@ def _test_imports() -> TestResult:
         import urllib3.contrib.hface.protocols.http1
         
         import rgbmatrix
-        import rgbmatrix.core
-        import rgbmatrix.graphics
+        import rgbmatrix.core       # type: ignore
+        import rgbmatrix.graphics   # type: ignore
         from rgbmatrix import RGBMatrix, RGBMatrixOptions
         return TestResult(True, "Success!")
     except Exception as e:
@@ -104,13 +107,49 @@ def _test_weather_rsp() -> TestResult:
     except Exception as e:
         return TestResult(False, str(e))
 
-def test() -> None:
-    print(_test_weather_cache().msg)
-    print(_test_hvv().msg)
-    print(_test_imports().msg)
-    print(_test_fonts().msg)
-    print(_test_weather_rsp().msg)
-    print(_test_matrix().msg)
+def _test_perms() -> TestResult:
+    if platform.system() == "Windows":
+        try:
+            temp = os.listdir(os.sep.join([os.environ.get("SystemRoot", "C:\\windows"), "temp"]))
+        except Exception as e:
+            return TestResult(False, str(e))
+        else:
+            return TestResult(True, "Success!")
+    else:
+        if 'SUDO_USER' in os.environ and os.geteuid() == 0:
+            return TestResult(True, "Success!")
+        else:
+            return TestResult(False, "Not using sudo.")
+
+def _test_packages() -> TestResult:
+    installed_packages = pkg_resources.working_set.by_key
+    requirements: List[str] = open("./requirements.txt", "r", encoding="UTF-8").readlines()
+    missing = []
+    mismatches = []
+    
+    packages = list(installed_packages.keys())
+    distributions = list(installed_packages.values())
+    for requirement in requirements:
+        # try:        # python script via UV
+        #     uv_env = os.environ["UV"]
+        # except:
+        #     pass    # regular python script
+        package, version = requirement.split("==")
+        version = version.removesuffix("\n")
+        if package in packages:
+            idx = packages.index(package)
+            dist = distributions[idx]
+            if dist.version == version:
+                continue
+            else:
+                mismatches.append([(packages[idx], distributions[idx].version), (package, version)])
+        else:
+            missing.append((package, version))
+    
+    if not missing and not mismatches:
+        return TestResult(True, "Success!")
+    else:
+        return TestResult(False, f"Missing: {missing},\n\t\tMismatches: {mismatches}")
 
 def pretty_tests() -> None:
     tests: List[Callable] = [
@@ -119,10 +158,14 @@ def pretty_tests() -> None:
         _test_imports,
         _test_fonts,
         _test_weather_rsp,
-        _test_matrix
+        _test_matrix,
+        _test_perms,
+        _test_packages
     ]
     for test in tests:
         print(f"Running Test {Fore.LIGHTGREEN_EX}\"{test.__name__}\"{Fore.RESET}\t{test().msg}")
 
 if __name__ == "__main__":
-    test()
+    # test
+    print(_test_perms().msg)
+    print(_test_packages().msg)

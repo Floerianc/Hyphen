@@ -24,10 +24,6 @@ class PrecipitationForecastWidget:
         self.gap = gap
         self.pf = precipitation_forecast
     
-    # @property
-    # def forecast(self) -> List[float]:
-    #     return self.weather.precipitation_forecast(3)
-    
     def render(self) -> None:
         font = graphics.Font()
         font.LoadFont(self.font)

@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc 
 # +++ Run as root! +++
 
-__version__ = "3.0.0"
+__version__ = "3.2.2"
 
 # external imports
 import os
@@ -27,8 +27,9 @@ from core.canvas import Matrix
 from core.visuals import *
 from core.dates import DateHandler
 from core.weather import WeatherAgent
+from core.pollen import DWDPollen
 from common.logger import log_event
-from common.typing import Thread
+from common.typing import Box
 from widgets.RainBar import RainBar
 from widgets.PrecipitationForecast import PrecipitationForecastWidget
 
@@ -47,10 +48,11 @@ class Hyphen(Matrix):
         self.date_handler = DateHandler()
         self.weather = WeatherAgent(self.date_handler)
         self.hvv = hvv.HVV(self.date_handler)
+        self.pollen = DWDPollen()
 
         # Threads
         self.dt_thread = Thread(target=threads.refresh_time, args=[self.date_handler,], daemon=True)
-        self.weather_thread = Thread(target=threads.refresh_ui, args=[self.weather, self.date_handler,], daemon=True)
+        self.weather_thread = Thread(target=threads.refresh_ui, args=[self.weather,], daemon=True)
         self.hvv_thread = Thread(target=threads.refresh_busses, args=[self.hvv,], daemon=True)
 
         self.dt_thread.start()
@@ -78,7 +80,8 @@ class Hyphen(Matrix):
     def run(self) -> None:
         schedule: List[Callable] = [
             self.render_weather_page,
-            self.render_bus_page
+            self.render_bus_page,
+            self.render_pollen_page,
         ]
         timer = 20.0
         idx = 0
@@ -158,10 +161,45 @@ class Hyphen(Matrix):
             delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
             self.draw_text(x=delay_x, y=delay_y, color=delay_clr, text=f"+{delay_minutes}", char_width=4, char_height=6)
     
+    def render_news_page(self) -> None:
+        pass
+    
+    def render_pollen_page(self) -> None:
+        self.pollen.update()
+        sev = self.pollen.get_pollen_severity(["Graeser", "Birke", "Roggen", "Esche"])
+        self.draw_text(x=19, y=0+6, color=CLR_WHITE, text="Pollen", char_width=4, char_height=6)
+        
+        positions: List[Box] = [
+            Box(x1=1, x2=29, y1=10, y2=15),
+            Box(x1=1, x2=29, y1=17, y2=22),
+            Box(x1=35, x2=63, y1=10, y2=15),
+            Box(x1=35, x2=63, y1=17, y2=22),
+        ]
+        
+        for idx, severity in enumerate(sev.items()):
+            if idx >= len(positions):
+                break
+            box = positions[idx]
+            
+            pollen = severity[0]
+            pollen_severity = severity[1]
+            letters = len(pollen)  # name of pollen
+            
+            if idx < round(len(positions) / 2): # if we are on the first half of positions, we're on the left sind
+                x = box.x1 + ((7 - letters) * 4)
+            else:   # right side
+                x = box.x1
+            y = box.y2
+            self.draw_text(x=x, y=y, color=pollen_severity.color, text=pollen, char_width=4, char_height=6)
+    
+    def render_untis_page(self) -> None:
+        pass
+    
     def render_weather_page(self) -> None:
         # draw weather icon
         weather_image, clr = WMO_MAP.get(self.weather.weather_code, ([], ()))
         del clr
+        
         self.draw_image(
             image=weather_image,
             start_x=1,
@@ -247,6 +285,8 @@ if __name__ == "__main__":
                 - Bus lines                                                             (X)
                 - Time of arrival                                                       (X)
                 - Delay                                                                 (X)
+            - Pollen page                                                               (X)
+            - Untis page                                                                (X)
         - Build new UI                                                                  (IN PROGRESS...)
             - Weather page                                                              (X)
                 - Lower box with time and temperature                                   (X)
@@ -261,13 +301,17 @@ if __name__ == "__main__":
                 - Drawing all components to the screen                                  (X)
                 - PlayWright does NOT work on Raspberry Pi 2 soooo Selentium            (X)
                     - Found work-around for chromium drivers on different OS            (X)
+            - Pollen page                                                               (X)    <---
+            - Untis page                                                                (IN PROGRESS...)
     Converter for images instead of large pixel matrices                                (X)
         - Built converter from .png to pixels                                           (X)
         - Fixed file path problem                                                       (X)
     Fix 24/7 Problem                                                                    (X)
         - Switch through windows/pages                                                  (X)
-        - Fix weather requests on 12 am                                                 (X)
+        - Fix weather requests on 12 am                                                 (FIX?)
             - I guess I solved it by not using the function causing it anymore          (X)
+            Now sometimes the weather data just doesn't load at all.                    (FIX?)
+                No Weather data from OpenMeteo? Try OpenMeteo implementation instead    (X)
         - HVV doesn't return "departures" sometimes, do better error handling           (X)
     Optimization:                                                                       (X)
         - Optimize Selenium options                                                     (X)
@@ -284,7 +328,7 @@ if __name__ == "__main__":
             - GeoFoxResponse,Departure,DepartureLine,DepartureStation,DepartureLineType (X)
             - Created a converter for the JSON response to the dataclass                (X)
         - Find a way to include delay (for some reason missing?)                        (X)
-    Workflow for exiting                                                                (IN PROGRESS...)
+    Workflow for exiting                                                                (X)
         - Clean exit for CRTL-C but still error traceback                               (X)
     HUGE PROBLEM: Can't deploy on Raspberry Pi 3                                        (FIX)
         Can't compile Numpy and Pandas                                                  (FIX)
@@ -310,7 +354,9 @@ if __name__ == "__main__":
                 - Fixed with the sudo-only approach
             3. maybe its the certifi cert (error message does not appear in tests)      (FIX?)
                 - Fixed with the sudo-only approach
-        Create Tests for the Raspberry Pi 3 deployment                                  (ONGOING...)
+        Create Tests for the Raspberry Pi 3 deployment                                  (X)
+            Check permissions                                                           (X)
+            Check installed packages                                                    (X)
             Test Weather cache                                                          (X)
             Test imports                                                                (X)
             Test rgbmatrix                                                              (X)
@@ -324,4 +370,6 @@ if __name__ == "__main__":
             Yes.                                                                        (X)
             So, apparently I have implemented it weirdly and now it works               (X)
     Added a cool little start-up checkup lol                                            (X)
+    Untis Integration                                                                   (IN PROGRESS...)
+        - Ask Untis support for help with integration because how tf                    (IN PROGRESS...)
 """
