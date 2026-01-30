@@ -4,7 +4,7 @@ from typing import Callable
 logging.basicConfig(
     filename="./log.log",
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s (%(filename)s, L. %(lineno)d)"
+    format="%(asctime)s %(levelname)s %(message)s"
 )
 log = logging.getLogger(__name__)
 

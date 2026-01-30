@@ -89,7 +89,7 @@ class WeatherAgent:
             try:
                 return float(temps[self.hour_index])
             except (IndexError, ValueError) as e:
-                print(str(e))
+                log_event(str(e))
                 return -100
         else:
             return -200
@@ -116,11 +116,25 @@ class WeatherAgent:
             start = self.hour_index
             
             if prec.size == 0 or start < 0:
-                print(prec, start)
+                log_event(f"{prec}, {start}")
                 return []
             
             end = min(start + hours, len(prec))
             return [float(p) for p in prec[start:end]]
+        else:
+            return []
+    
+    def temperature_forecast(self, hours: int) -> List[float]:
+        if self.data:
+            temps: ndarray = self.data.Variables(0).ValuesAsNumpy() # type: ignore
+            start = self.hour_index
+            
+            if temps.size == 0 or start < 0:
+                log_event(f"{temps}, {start}")
+                return []
+            
+            end = min(start + hours, len(temps))
+            return [float(t) for t in temps[start:end]]
         else:
             return []
 

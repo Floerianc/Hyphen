@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# Program entirely written by github.com/Floerianc 
+# Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.2.2"
+__version__ = "3.3.1"
 
 # external imports
 import os
@@ -13,11 +13,7 @@ from typing import (
     List,
 )
 
-os.chdir(
-    os.path.dirname(
-        os.path.realpath(__file__)
-    )
-)
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # local imports
 import core.threads as threads
@@ -31,9 +27,10 @@ from core.pollen import DWDPollen
 from common.logger import log_event
 from common.typing import Box
 from widgets.RainBar import RainBar
-from widgets.PrecipitationForecast import PrecipitationForecastWidget
+from widgets.MatrixGraph import MatrixGraph
 
 # sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
+
 
 class Hyphen(Matrix):
     @log_event("Initializing Program...")
@@ -43,7 +40,7 @@ class Hyphen(Matrix):
         """
         # Inheritance init
         super(Hyphen, self).__init__(*args, **kwargs)
-        
+
         # Important classes
         self.date_handler = DateHandler()
         self.weather = WeatherAgent(self.date_handler)
@@ -51,14 +48,32 @@ class Hyphen(Matrix):
         self.pollen = DWDPollen()
 
         # Threads
-        self.dt_thread = Thread(target=threads.refresh_time, args=[self.date_handler,], daemon=True)
-        self.weather_thread = Thread(target=threads.refresh_ui, args=[self.weather,], daemon=True)
-        self.hvv_thread = Thread(target=threads.refresh_busses, args=[self.hvv,], daemon=True)
+        self.dt_thread = Thread(
+            target=threads.refresh_time,
+            args=[
+                self.date_handler,
+            ],
+            daemon=True,
+        )
+        self.weather_thread = Thread(
+            target=threads.refresh_ui,
+            args=[
+                self.weather,
+            ],
+            daemon=True,
+        )
+        self.hvv_thread = Thread(
+            target=threads.refresh_busses,
+            args=[
+                self.hvv,
+            ],
+            daemon=True,
+        )
 
         self.dt_thread.start()
         self.weather_thread.start()
         self.hvv_thread.start()
-        
+
         self.welcome_message = f"""
         Welcome to my LED Panel program.
         (Author: https://github.com/Floerianc)
@@ -76,7 +91,7 @@ class Hyphen(Matrix):
     #     self.clear()
     #     self.draw_text(1, 36, 255, 255, 255, msg, 4, 6)
     #     time.sleep(timeout_duration)
-    
+
     def run(self) -> None:
         schedule: List[Callable] = [
             self.render_weather_page,
@@ -87,7 +102,7 @@ class Hyphen(Matrix):
         idx = 0
         current_func = schedule[idx]
         switch_time = time.monotonic() + timer
-        
+
         self.canvas = self.matrix.CreateFrameCanvas()
         while True:
             # FIXME: Very CPU expensive
@@ -96,43 +111,37 @@ class Hyphen(Matrix):
                 idx = (idx + 1) % len(schedule)
                 current_func = schedule[idx]
                 switch_time = now + timer
-            
+
             self.canvas.Clear()
             self.render_info_bar()
             current_func()
-            
+
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
-    
+
     def render_info_bar(self) -> None:
         # draw box
-        self.draw_box(
-            x1=0,
-            x2=64,
-            y1=25,
-            y2=33,
-            color=CLR_WHITE
-        )
-        
+        self.draw_box(x1=0, x2=64, y1=25, y2=33, color=CLR_WHITE)
+
         # clock string (in box)
         self.draw_text(
-            x = 1,
-            y = 31,
-            color = CLR_BLACK,
-            text = self.date_handler.clock_string,
+            x=1,
+            y=31,
+            color=CLR_BLACK,
+            text=self.date_handler.clock_string,
             char_width=4,
-            char_height=6
+            char_height=6,
         )
-        
+
         # temperature string
         self.draw_text(
-            x = 36,
-            y = 31,
-            color = CLR_BLACK,
-            text = f"{self.weather.current_temperature:.2f}°C",
+            x=36,
+            y=31,
+            color=CLR_BLACK,
+            text=f"{self.weather.current_temperature:.2f}°C",
             char_width=4,
-            char_height=6
+            char_height=6,
         )
-    
+
     def render_bus_page(self) -> None:
         for idx, bus in enumerate(self.hvv.next_busses):
             # bus line logo
@@ -140,112 +149,153 @@ class Hyphen(Matrix):
             img_start_y = 1 + (8 * idx)
             text_x = (img_start_x + 3) + (2 * (3 - len(str(bus.line))))
             text_y = img_start_y + 6
-            
-            self.draw_image(image=HVV_LOGO_BASE, start_x=img_start_x, start_y=img_start_y)
-            self.draw_text(x=text_x, y=text_y, color=CLR_WHITE, text=str(bus.line), char_width=4, char_height=6)
-            
+
+            self.draw_image(
+                image=HVV_LOGO_BASE, start_x=img_start_x, start_y=img_start_y
+            )
+            self.draw_text(
+                x=text_x,
+                y=text_y,
+                color=CLR_WHITE,
+                text=str(bus.line),
+                char_width=4,
+                char_height=6,
+            )
+
             # destination name
             name_x = 1 + len(HVV_LOGO_BASE[0]) + 2  # 1 (margin) + length of logo + gap
             name_y = text_y
-            self.draw_text(x=name_x, y=name_y, color=CLR_WHITE, text=bus.destination.strip()[0:3], char_width=4, char_height=6)
-            
+            self.draw_text(
+                x=name_x,
+                y=name_y,
+                color=CLR_WHITE,
+                text=bus.destination.strip()[0:3],
+                char_width=4,
+                char_height=6,
+            )
+
             # time of arrival
-            arrival_x = name_x + 12 + 1 # 12 = length of destination text, 1 = gap
+            arrival_x = name_x + 12 + 1  # 12 = length of destination text, 1 = gap
             arrival_y = name_y
-            self.draw_text(x=arrival_x, y=arrival_y, color=CLR_CYAN, text=bus.time.strftime("%H:%M"), char_width=4, char_height=6)
-            
+            self.draw_text(
+                x=arrival_x,
+                y=arrival_y,
+                color=CLR_CYAN,
+                text=bus.time.strftime("%H:%M"),
+                char_width=4,
+                char_height=6,
+            )
+
             # delay
-            delay_x = arrival_x + 20 + 1 # 20 = length of time of arrival text, 1 = gap
+            delay_x = arrival_x + 20 + 1  # 20 = length of time of arrival text, 1 = gap
             delay_y = arrival_y
             delay_minutes = round(bus.delay.seconds / 60)
             delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
-            self.draw_text(x=delay_x, y=delay_y, color=delay_clr, text=f"+{delay_minutes}", char_width=4, char_height=6)
-    
+            self.draw_text(
+                x=delay_x,
+                y=delay_y,
+                color=delay_clr,
+                text=f"+{delay_minutes}",
+                char_width=4,
+                char_height=6,
+            )
+
     def render_news_page(self) -> None:
         pass
-    
+
     def render_pollen_page(self) -> None:
         self.pollen.update()
         sev = self.pollen.get_pollen_severity(["Graeser", "Birke", "Roggen", "Esche"])
-        self.draw_text(x=19, y=0+6, color=CLR_WHITE, text="Pollen", char_width=4, char_height=6)
-        
+        self.draw_text(
+            x=19, y=0 + 6, color=CLR_WHITE, text="Pollen", char_width=4, char_height=6
+        )
+
         positions: List[Box] = [
             Box(x1=1, x2=29, y1=10, y2=15),
             Box(x1=1, x2=29, y1=17, y2=22),
             Box(x1=35, x2=63, y1=10, y2=15),
             Box(x1=35, x2=63, y1=17, y2=22),
         ]
-        
+
         for idx, severity in enumerate(sev.items()):
             if idx >= len(positions):
                 break
             box = positions[idx]
-            
+
             pollen = severity[0]
             pollen_severity = severity[1]
             letters = len(pollen)  # name of pollen
-            
+
             if idx < round(len(positions) / 2): # if we are on the first half of positions, we're on the left sind
                 x = box.x1 + ((7 - letters) * 4)
-            else:   # right side
+            else:  # right side
                 x = box.x1
             y = box.y2
-            self.draw_text(x=x, y=y, color=pollen_severity.color, text=pollen, char_width=4, char_height=6)
-    
+            self.draw_text(
+                x=x,
+                y=y,
+                color=pollen_severity.color,
+                text=pollen,
+                char_width=4,
+                char_height=6,
+            )
+
     def render_untis_page(self) -> None:
         pass
-    
+
     def render_weather_page(self) -> None:
         # draw weather icon
         weather_image, clr = WMO_MAP.get(self.weather.weather_code, ([], ()))
         del clr
-        
-        self.draw_image(
-            image=weather_image,
-            start_x=1,
-            start_y=15
-        )
-        
+
+        self.draw_image(image=weather_image, start_x=1, start_y=15)
+
         # draw rain bar
         rain_bar = RainBar(
-            canvas = self.canvas, 
-            x_pos = 1, 
-            y_pos = 1,
-            width = 8, 
-            height = 12, 
-            color = CLR_FOG
+            canvas=self.canvas,
+            x_pos=1,
+            y_pos=1,
+            width=8,
+            height=12,
+            color=CLR_FOG
         )
         rain_bar.draw_bar(
             canvas=self.canvas,
             precipitation=self.weather.precipitation,
-            font_path=self.interpret_font_size(4, 6)
+            font_path=self.interpret_font_size(4, 6),
         )
-        
-        # draw rain icon
-        rain_image = IMG_RAINDROP
-        self.draw_image(
-            image=rain_image,
-            start_x=56,
-            start_y=1
+
+        precipitation_graph = MatrixGraph(
+            canvas=self,
+            x=30,
+            y=1,
+            width=33,
+            height=11,
+            max_value=None,
+            graph_color=CLR_BRIGHTER_BLUE,
+            data=self.weather.precipitation_forecast(6),
         )
-        
-        # draw precipitation forecast
-        pfw = PrecipitationForecastWidget(
-            canvas=self.canvas,
-            x_pos=24,
-            y_pos=7,
-            font=self.interpret_font_size(4, 6),
-            font_color=Color(255, 255, 255),
-            gap=1,
-            precipitation_forecast=self.weather.precipitation_forecast(3)
+        precipitation_graph.render()
+
+        temperature_graph = MatrixGraph(
+            canvas=self,
+            x=30,
+            y=13,
+            width=33,
+            height=11,
+            max_value=None,
+            graph_color=CLR_SUN,
+            data=self.weather.temperature_forecast(6),
         )
-        pfw.render()
+        temperature_graph.render()
+
 
 if __name__ == "__main__":
     CHECK_UP = True
 
     if CHECK_UP:
         import tests
+
         tests.pretty_tests()
 
     app = Hyphen()
@@ -262,7 +312,7 @@ if __name__ == "__main__":
         - DateHandler in its own file                                                   (X)
         - WeatherHandler in its own file                                                (X)
         - Clean up code                                                                 (X)
-        - Update documentation                                                          (NOT STARTED YET)
+        - Update documentation                                                          (IN PROGRESS...)    <--- Continue here
         - Fix typing errors                                                             (X)
         - Turn Hyphen class into two components, the App itself and the Canvas          (X)
             - Create own Framework. Don't use Samplebase due to complex inheritance     (X)
@@ -301,7 +351,7 @@ if __name__ == "__main__":
                 - Drawing all components to the screen                                  (X)
                 - PlayWright does NOT work on Raspberry Pi 2 soooo Selentium            (X)
                     - Found work-around for chromium drivers on different OS            (X)
-            - Pollen page                                                               (X)    <---
+            - Pollen page                                                               (X)
             - Untis page                                                                (IN PROGRESS...)
     Converter for images instead of large pixel matrices                                (X)
         - Built converter from .png to pixels                                           (X)
@@ -372,4 +422,12 @@ if __name__ == "__main__":
     Added a cool little start-up checkup lol                                            (X)
     Untis Integration                                                                   (IN PROGRESS...)
         - Ask Untis support for help with integration because how tf                    (IN PROGRESS...)
+    Weather Page update                                                                 (X)
+        - Added graphs for temperature and precipitation                                (X)
+        - Added common MatrixGraph class                                                (X)
+            - Big class for re-usable graphs on the RGBMatrix                           (X)
+    Log Clean-up                                                                        (IN PROGRESS...)
+        - Better error handling (Different levels, not just DEBUG and INFO)             (IN PROGRESS...)
+        - Clean-up INFO and DEBUG logs every 24 hrs.                                    (IN PROGRESS...)
+        - Clean-up after every restart                                                  (IN PROGRESS...)
 """

@@ -6,6 +6,7 @@ from RGBMatrixEmulator import (
     RGBMatrixOptions,
     graphics
 )
+from typing import Optional
 from util.utils import FONT_PATH
 from common.typing import (
     Color,
@@ -61,9 +62,11 @@ class Matrix(object):
             self.canvas.SetPixel(self.matrix.width-1, y, r, g, b)
 
     def draw_horizontal(
-            self, 
+            self,
             y: int,
-            color: Color
+            color: Color,
+            start: Optional[int] = None,
+            stop: Optional[int] = None
         ) -> None:
         """
         draw_horizontal Draws a horizontal line
@@ -82,7 +85,24 @@ class Matrix(object):
             b -- Amount of Blue     (default: {255})
         """
         r, g, b = color.r, color.g, color.b
-        for x in range(1, self.matrix.width-1):
+        start = start if start else 0
+        stop = stop if stop else self.matrix.width
+        
+        for x in range(start, stop):
+            self.canvas.SetPixel(x, y, r, g, b)
+    
+    def draw_vertical(
+        self,
+        x: int,
+        color: Color,
+        start: Optional[int] = None,
+        stop: Optional[int] = None
+    ) -> None:
+        r, g, b = color.r, color.g, color.b
+        start = start if start else 0
+        stop = stop if stop else self.matrix.height
+        
+        for y in range(start, stop):
             self.canvas.SetPixel(x, y, r, g, b)
     
     def draw_box(
