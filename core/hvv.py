@@ -37,6 +37,11 @@ class HVV:
 
     @property
     def geofox_header(self) -> dict:
+        """Header for the GeoFox API
+
+        Returns:
+            dict: HTTP Header
+        """
         return {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -45,6 +50,14 @@ class HVV:
     
     @property
     def geofox_payload(self) -> dict:
+        """Payload for the GeoFox API call
+
+        Here I use a random station and line but you can
+        change this to use your nearest station.
+
+        Returns:
+            dict: Payload
+        """
         date = self.dh.date.strftime("%d.%m.%Y")
         time = self.dh.date.strftime("%M:%S")
         return {
@@ -67,6 +80,19 @@ class HVV:
 
     @property
     def next_busses(self) -> List[BusArrival]:
+        """Returns the next few busses that arrive at your
+        station. You can amount change the max stations
+        in the function
+
+        Note: This is a set which only adds new lines.
+        So if you have a bus line 100 and the next bus
+        is another bus line 100 it won't be added on the
+        list. However, bus line 101 would be added if it's
+        not already in the set.
+
+        Returns:
+            List[BusArrival]: Next busses
+        """
         already_added_bus = set()
         busses: List[BusArrival] = []
         max_len = 3
@@ -86,6 +112,14 @@ class HVV:
         self,
         time: str
     ) -> datetime:
+        """Converts Hour:Minute to datetime
+
+        Args:
+            time (str): Time in Hour:Minute format
+
+        Returns:
+            datetime: datetime object
+        """
         now = utils.tz_date()
         hour, minute = time.split(":")
         return datetime(now.year, now.month, now.day, int(hour), int(minute), now.second)
@@ -95,6 +129,18 @@ class HVV:
         self,
         driver: webdriver.Chrome
     ) -> List[BusArrival]:
+        """Scrapes next busses that arrive
+
+        It uses the HVV_URL variable to load a chromium
+        webdriver and scrape the next bus lines and the
+        time they arrive at your station.
+
+        Args:
+            driver (webdriver.Chrome): Chromium Webdriver
+
+        Returns:
+            List[BusArrival]: Next busses
+        """
         rows = driver.find_elements(By.CSS_SELECTOR, "tr.js-tr-monitor-departure")
         busses: List[BusArrival] = []
         
@@ -127,6 +173,11 @@ class HVV:
 
     @log_event("Loading Chromium Drivers...")
     def _get_chrome_driver(self) -> webdriver.Chrome:
+        """Returns a chromium webdriver
+
+        Returns:
+            webdriver.Chrome: Chromium webdriver
+        """
         options = Options()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
@@ -146,6 +197,15 @@ class HVV:
         self,
         data: dict
     ) -> GeoFoxResponse:
+        """Converts JSON Response to its own dataclass
+        which is defined in common/typing.py
+
+        Args:
+            data (dict): Response object
+
+        Returns:
+            GeoFoxResponse: GeoFoxResponse dataclass
+        """
         returnCode = data["returnCode"]
         time = dacite.from_dict(data_class=GeoFoxTime, data=data["time"])
         
@@ -172,6 +232,19 @@ class HVV:
         self,
         rsp: GeoFoxResponse
     ) -> List[BusArrival]:
+        """Parse GeoFox API response data into a list of bus arrivals.
+        
+        This method extracts departure information from a GeoFox response object
+        and converts it into BusArrival objects, adjusting times based on the
+        offset provided by the API and calculating delays.
+        
+        Args:
+            rsp (GeoFoxResponse): The GeoFox response object containing departure data.
+        
+        Returns:
+            List[BusArrival]: A list of BusArrival objects with line number, destination,
+                                arrival time, and delay information.
+        """
         busses = []
         section: GeoFoxDeparture
         
@@ -193,6 +266,14 @@ class HVV:
     
     @log_event("Sending request to HVV GeoFox")
     def get_geofox_response(self) -> GeoFoxResponse:
+        """Returns the converted GeoFox API response for the
+        arriving bus lines at your bus station
+
+        For more detail, check the functions inside
+
+        Returns:
+            GeoFoxResponse: GeoFox API response
+        """
         rsp = None
         try:
             rsp = requests.post(

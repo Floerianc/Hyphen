@@ -1,10 +1,29 @@
 from typing import (
     Dict,
     Tuple,
+    List
 )
-from core.visuals import *
+from core.visuals import (
+    Pixel,
+    Color,
+    IMG_SUN,
+    CLR_SUN,
+    IMG_FOG,
+    CLR_FOG,
+    IMG_DRIZZLE,
+    CLR_BRIGHT_BLUE,
+    IMG_RAINDROP,
+    IMG_SNOWFLAKE,
+    IMG_RAIN_SHOWER,
+    IMG_THUNDER,
+    IMG_SNOW_SHOWER,
+    CLR_WHITE,
+    CLR_DARK_BRIGHT_BLUE,
+    CLR_YELLOW,
+    CLR_BRIGHTER_BLUE
+)
 
-WMO_MAP: Dict[int, Tuple[Image, Color]] = {
+WMO_MAP: Dict[int, Tuple[List[List[Pixel]], Color]] = {
     0:      (IMG_SUN, CLR_SUN),
     1:      (IMG_SUN, CLR_SUN),
     2:      (IMG_SUN, CLR_SUN),

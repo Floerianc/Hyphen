@@ -31,18 +31,37 @@ class DWDPollen:
             self.data = new_data
     
     def get_region(self) -> dict:
+        """Returns the region data for your region in Germany
+
+        Returns:
+            dict: Region data
+        """
         for l in self.data['content']:
             if l['region_id'] == self.region_ID:
                 return l
         return {}
     
     def get_pollen(self) -> dict:
+        """Returns the pollen data from your region
+
+        Returns:
+            dict: Pollen data
+        """
         return self.get_region()['Pollen']
     
     def get_pollen_severity(
         self,
         pollen: List[str]
     ) -> Dict[str, PollenSeverity]:
+        """Returns a dictionary containing the pollen type and
+        its severity in your region
+
+        Args:
+            pollen (List[str]): The types of pollen you wanna check
+
+        Returns:
+            Dict[str, PollenSeverity]: Dictionary
+        """
         data = self.get_pollen()
         return {
             pollen_name: self.sev_map[data[pollen_name]['today']] for pollen_name in pollen

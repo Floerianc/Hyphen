@@ -29,6 +29,12 @@ class TestResult:
     msg: str
 
 def _test_weather_cache() -> TestResult:
+    """Checks if the program is able to read and write
+    into the weather cache.
+
+    Returns:
+        TestResult: Successful or not :)
+    """
     OS = platform.system()
     if OS == "linux":
         path = "/tmp/weather.cache"
@@ -44,6 +50,19 @@ def _test_weather_cache() -> TestResult:
         return TestResult(False, str(e))
 
 def _test_imports() -> TestResult:
+    """Tests critical imports that have caused
+    problems in the past.
+
+    If idna or urllib misses: Just install the packages
+    
+    If idna.uts46data or the other urllib packages are missing:
+    try reinstalling or updating them.
+    
+    If rgbmatrix is missing: you're cooked, try recompiling it
+
+    Returns:
+        TestResult: Successful or not
+    """
     try:
         import idna
         import idna.uts46data
@@ -60,9 +79,20 @@ def _test_imports() -> TestResult:
         return TestResult(False, str(e))
 
 def _hvv_generator() -> HVV:
+    """Creates a valid HVV controller
+
+    Returns:
+        HVV: HVV class
+    """
     return HVV(DateHandler())
 
 def _test_hvv() -> TestResult:
+    """Tests if the API response from HVV is valid
+    and available
+
+    Returns:
+        TestResult: Successful or not
+    """
     hvv = _hvv_generator()
     try:
         hvv.set_bus_arrivals()
@@ -73,6 +103,11 @@ def _test_hvv() -> TestResult:
         return TestResult(False, str(e))
 
 def _test_fonts() -> TestResult:
+    """Tests if program can access fonts 
+
+    Returns:
+        TestResult: Successful or not
+    """
     path = os.path.join(FONT_PATH, f"4x6.bdf")
     if os.path.exists(os.path.abspath(path)):
         filenames = os.listdir(FONT_PATH)
@@ -85,6 +120,13 @@ def _test_fonts() -> TestResult:
         return TestResult(False, "Font path does not exist.")
 
 def _test_matrix() -> TestResult:
+    """Tests a few core functionalities in the Matrix
+    class to check if it is possible to communicate
+    with the LED Panel
+
+    Returns:
+        TestResult: Successful or not
+    """
     try:
         m = Matrix()
         m.process()
@@ -95,6 +137,11 @@ def _test_matrix() -> TestResult:
         return TestResult(False, str(e))
 
 def _test_weather_rsp() -> TestResult:
+    """Tests if the weather API is working accordingly
+
+    Returns:
+        TestResult: Successful or not
+    """
     try:
         w = WeatherAgent(DateHandler())
         w.weather
@@ -108,6 +155,16 @@ def _test_weather_rsp() -> TestResult:
         return TestResult(False, str(e))
 
 def _test_perms() -> TestResult:
+    """Checks if the program is run with admin rights
+    
+    This is important because the rgbmatrix module
+    needs admin rights to set the maximum priority
+    of the program so there isn't much flickering
+    on the panel.
+
+    Returns:
+        TestResult: Is running with admin or not
+    """
     if platform.system() == "Windows":
         try:
             temp = os.listdir(os.sep.join([os.environ.get("SystemRoot", "C:\\windows"), "temp"]))
@@ -122,6 +179,18 @@ def _test_perms() -> TestResult:
             return TestResult(False, "Not using sudo.")
 
 def _test_packages() -> TestResult:
+    """Checks if the correct packages are installed
+
+    This is really important because some
+    packages are colliding with each other if you
+    have the wrong version installed
+    
+    the requirements.txt shipped with the program
+    should install every needed package
+
+    Returns:
+        TestResult: Returns missing and mismatching packages if necessary
+    """
     installed_packages = pkg_resources.working_set.by_key
     requirements: List[str] = open("./requirements.txt", "r", encoding="UTF-8").readlines()
     missing = []
@@ -149,7 +218,7 @@ def _test_packages() -> TestResult:
     if not missing and not mismatches:
         return TestResult(True, "Success!")
     else:
-        return TestResult(False, f"Missing: {missing},\n\t\tMismatches: {mismatches}")
+        return TestResult(False, f"Missing:\t{missing},\n\t\t\t\tMismatches: {mismatches}")
 
 def pretty_tests() -> None:
     tests: List[Callable] = [

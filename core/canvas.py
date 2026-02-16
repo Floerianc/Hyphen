@@ -17,6 +17,10 @@ from common.typing import (
 
 class Matrix(object):
     def __init__(self) -> None:
+        """Initiates the Matrix Class to control the LED panel
+
+        This class uses the console arguments to set the configuration
+        """
         self._parser = argparse.ArgumentParser()
 
         self._parser.add_argument("-r", "--led-rows", action="store", help="Display rows. 16 for 16x32, 32 for 32x32. Default: 64", default=32, type=int)
@@ -50,7 +54,7 @@ class Matrix(object):
         color.
 
         Arguments:
-            color -- Color of the border (check ./images.py Color dataclass)
+            color -- Color of the border
         """
         r, g, b = color.r, color.g, color.b
         for x in range(0, self.matrix.width-1):
@@ -74,15 +78,13 @@ class Matrix(object):
         This one draws a horizontal line along the whole x-axis
         on a given y position.
 
-        You can also set the color by passing red, green and blue values.
+        You can also set the color by passing a Color dataclass.
 
         Arguments:
             y -- Y-Position
-
-        Keyword Arguments:
-            r -- Amount of Red      (default: {255})
-            g -- Amount of Green    (default: {255})
-            b -- Amount of Blue     (default: {255})
+            color -- Color
+            start -- at which position the line starts
+            stop -- at which position the line ends
         """
         r, g, b = color.r, color.g, color.b
         start = start if start else 0
@@ -98,6 +100,14 @@ class Matrix(object):
         start: Optional[int] = None,
         stop: Optional[int] = None
     ) -> None:
+        """Draws a vertical line on the LED-Panel
+
+        Args:
+            x (int): X-Position
+            color (Color): Color of the lien
+            start (Optional[int], optional): The y position the line starts. Defaults to None.
+            stop (Optional[int], optional): The y position the line ends. Defaults to None.
+        """
         r, g, b = color.r, color.g, color.b
         start = start if start else 0
         stop = stop if stop else self.matrix.height
@@ -113,6 +123,15 @@ class Matrix(object):
         y2: int,
         color: Color
     ) -> None:
+        """Draws a filled box on the LED-Panel
+
+        Args:
+            x1 (int): Corner 1
+            y1 (int): Corner 2
+            x2 (int): Corner 3
+            y2 (int): Corner 4
+            color (Color): Color
+        """
         r, g, b = color.r, color.g, color.b
         set_pixel = self.canvas.SetPixel
         for y in range(y1, y2):
@@ -134,9 +153,7 @@ class Matrix(object):
         Arguments:
             x -- X-Position
             y -- Y-Position
-            r -- Amount of Red
-            g -- Amount of Green
-            b -- Amount of Blue
+            color -- Color of the text
             text -- Text displayed
 
         Keyword Arguments:
@@ -213,6 +230,13 @@ class Matrix(object):
         print("Running")
     
     def process(self) -> bool:
+        """Processes the arguments, sets the configuration,
+        creates matrix and canvas instance and starts the run()
+        loop
+
+        Returns:
+            bool: Returns True if exiting
+        """
         self.args = self._parser.parse_args()
         options = RGBMatrixOptions()
 

@@ -1,10 +1,5 @@
 import os
-from typing import (
-    Any,
-    Iterable,
-    Tuple,
-    List
-)
+from typing import List
 from PIL import (
     Image,
     ImageFile
@@ -34,6 +29,19 @@ class MatrixImage:
         self,
         img: ImageFile.ImageFile,
     ) -> List[List[Pixel]]:
+        """Converts an image to RGBA tuples
+
+        Uses PIL to convert an image to a large
+        list of RGBA tuples which is then processed
+        into a 2 dimensional array of RGBA tuples, basically
+        storing the image as each individual pixel
+
+        Args:
+            img (ImageFile.ImageFile): PIL Image
+
+        Returns:
+            List[List[Pixel]]: 2D list of pixels
+        """
         # img[x, y] = RGBA value
         pixels: List[List[Pixel]] = []
         rgba_values = img.convert("RGBA").getdata()

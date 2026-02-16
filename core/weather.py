@@ -46,14 +46,24 @@ class WeatherAgent:
         self.data = self._fetch_weather()
 
     def _fetch_weather(self) -> Optional[VariablesWithTime]:
+        """Returns the "Hourly" data of the Weather API
+
+        Returns:
+            Optional[VariablesWithTime]: Variables from Openmeteo
+        """
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
             "latitude": 53.55,
             "longitude": 9.9333,
-            "hourly": ["temperature_2m", "precipitation_probability", "precipitation", "weather_code"],
+            "hourly": [
+                "temperature_2m",
+                "precipitation_probability",
+                "precipitation",
+                "weather_code"
+            ],
             "models": "best_match",
             "timezone": "auto",
-            "forecast_days": 3,
+            "forecast_days": 1,
             "timeformat": "unixtime",
         }
         try:
@@ -68,22 +78,29 @@ class WeatherAgent:
         new_data = self._fetch_weather()
         if new_data:
             self.data = new_data
-
-    # def _hourly_list(
-    #     self,
-    #     key: str
-    # ) -> List[Union[int, float]]:
-    #     values = self.hourly.get(key)
-    #     if isinstance(values, list):
-    #         return values
-    #     return []
     
     @property
     def hour_index(self) -> int:
+        """Returns the current hour. Useful for selecting
+        an item in a list
+
+        Returns:
+            int: Current hour
+        """
         return self.date_handler.date.hour
     
     @property
     def current_temperature(self) -> float:
+        """Returns the current temperature
+
+        If it fails, it will log an error into
+        the log file. Also, if the API returns
+        an empty list, it will just return -100
+        or -200 if there is no data to begin with.
+
+        Returns:
+            float: Current temperature
+        """
         if self.data:
             temps = self.data.Variables(0).ValuesAsNumpy()  # type: ignore
             try:
@@ -96,6 +113,15 @@ class WeatherAgent:
     
     @property
     def rain_forecast_avg(self) -> Union[int, float]:
+        """Returns the average rain forcast probability for the next hours.
+
+        The method may fail if the API does not return
+        data or is not assigned. In that case, the method
+        will return -1 instead.
+
+        Returns:
+            Union[int, float]: Average rain forcast probability
+        """
         if self.data:
             probs: ndarray = self.data.Variables(1).ValuesAsNumpy()  # type: ignore
             start = self.hour_index
@@ -110,7 +136,22 @@ class WeatherAgent:
         else:
             return -1
 
-    def precipitation_forecast(self, hours: int) -> List[float]:
+    def precipitation_forecast(
+        self,
+        hours: int
+    ) -> List[float]:
+        """Returns the amount of precipitation in mm for
+        the next `x` hours.
+        
+        If the method fails, for example due to an error
+        with the API, it will return an empty list
+
+        Args:
+            hours (int): The amount of hours into the future
+
+        Returns:
+            List[float]: Precipitation forecast in mm
+        """
         if self.data:
             prec: ndarray = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
             start = self.hour_index
@@ -124,7 +165,22 @@ class WeatherAgent:
         else:
             return []
     
-    def temperature_forecast(self, hours: int) -> List[float]:
+    def temperature_forecast(
+        self,
+        hours: int
+    ) -> List[float]:
+        """Returns the temperature in celsius for the next
+        `x` hours.
+        
+        If the method fails, for example due to an error
+        with the API, it will return an empty list
+
+        Args:
+            hours (int): The amount of hours into the future
+
+        Returns:
+            List[float]: Temperature forecast in celsius
+        """
         if self.data:
             temps: ndarray = self.data.Variables(0).ValuesAsNumpy() # type: ignore
             start = self.hour_index
@@ -140,6 +196,15 @@ class WeatherAgent:
 
     @property
     def precipitation(self) -> float:
+        """Returns the current precipitation in mm
+
+        If the API returns nothing, it
+        will just return 0.0 or -1.0 if there
+        is no data to begin with.
+
+        Returns:
+            float: Current precipitation in mm
+        """
         if self.data:
             prec = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
             try:
@@ -151,6 +216,15 @@ class WeatherAgent:
 
     @property
     def weather_code(self) -> int:
+        """Returns the weather code for the current weather
+
+        If the API returns nothing, it
+        will just return -1 or -2 if there
+        is no data to begin with.
+
+        Returns:
+            float: Current precipitation in mm
+        """
         if self.data:
             codes = self.data.Variables(3).ValuesAsNumpy()  # type: ignore
             try:
@@ -160,17 +234,30 @@ class WeatherAgent:
         else:
             return -2
 
-    @property
-    def weather(self) -> Tuple[Image, Color]:
-        code = self.weather_code
-        if code != -1:
-            return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))  # type: ignore
-        return ([[Pixel(True)]], CLR_RED)
+    # @property
+    # def weather(self) -> Tuple[Image, Color]:
+    #     code = self.weather_code
+    #     if code != -1:
+    #         return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))  # type: ignore
+    #     return ([[Pixel(True)]], CLR_RED)
 
     def average(
         self,
         values: List[Union[int, float]]
     ) -> Union[int, float]:
+        """Returns the average for a given list
+        of int and/or floats.
+        
+        The method might return -1 if the length of
+        the list is equal to 0 due to the
+        `ZeroDivisionError`.
+
+        Args:
+            values (List[Union[int, float]]): List of ints/floats
+
+        Returns:
+            Union[int, float]: Average
+        """
         try:
             return sum(values) / len(values)
         except ZeroDivisionError:

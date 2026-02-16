@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.3.1"
+__version__ = "3.3.3"
 
 # external imports
 import os
@@ -312,7 +312,8 @@ if __name__ == "__main__":
         - DateHandler in its own file                                                   (X)
         - WeatherHandler in its own file                                                (X)
         - Clean up code                                                                 (X)
-        - Update documentation                                                          (IN PROGRESS...)    <--- Continue here
+            - Fixed Type Hinting                                                        (X)
+        - Update documentation                                                          (X)
         - Fix typing errors                                                             (X)
         - Turn Hyphen class into two components, the App itself and the Canvas          (X)
             - Create own Framework. Don't use Samplebase due to complex inheritance     (X)
