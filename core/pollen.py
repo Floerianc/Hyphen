@@ -8,6 +8,7 @@ from common.typing import (
     PollenSeverity,
     SeverityMap
 )
+from common.logger import log_event
 
 class DWDPollen:
     def __init__(self) -> None:
@@ -26,9 +27,9 @@ class DWDPollen:
         }
     
     def update(self) -> None:
-        new_data: dict = requests.get(self.URL).json()
-        if new_data:
-            self.data = new_data
+        new_data = requests.get(self.URL)
+        if new_data and new_data.status_code == 200:
+            self.data = new_data.json()
     
     def get_region(self) -> dict:
         """Returns the region data for your region in Germany
@@ -47,7 +48,11 @@ class DWDPollen:
         Returns:
             dict: Pollen data
         """
-        return self.get_region()['Pollen']
+        try:
+            return self.get_region()['Pollen']
+        except KeyError as e:
+            log_event(f"Key {str(e)} not found in regional pollen data", "ERROR")
+            return {}
     
     def get_pollen_severity(
         self,

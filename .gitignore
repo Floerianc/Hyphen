@@ -16,3 +16,4 @@ rgbmatrix
 .cache.sqlite
 util/samplebase.py
 log.log
+logs/*

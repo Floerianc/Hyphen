@@ -7,20 +7,8 @@ from typing import (
     Optional,
     List,
     Union,
-    Tuple,
 )
-from core.visuals import (
-    Pixel,
-    IMG_SUN,
-    CLR_SUN,
-    CLR_RED,
-)
-from core.enums import WMO_MAP
 from core.dates import DateHandler
-from common.typing import (
-    Color,
-    Image,
-)
 from common.logger import log_event
 
 
@@ -34,7 +22,7 @@ class WeatherAgent:
         
         self.session = requests_cache.CachedSession(
             cache_name='.cache',
-            expire_after=3600
+            expire_after=180
         )
         self.retry_session = retry(
             self.session,
@@ -78,6 +66,8 @@ class WeatherAgent:
         new_data = self._fetch_weather()
         if new_data:
             self.data = new_data
+        # print(self.session.cache.urls())
+        # print(str(self.session.cache.responses))
     
     @property
     def hour_index(self) -> int:
@@ -106,10 +96,11 @@ class WeatherAgent:
             try:
                 return float(temps[self.hour_index])
             except (IndexError, ValueError) as e:
-                log_event(str(e))
-                return -100
+                log_event("Couldn't find the current temperature", "ERROR")
+                raise RuntimeError("No temperature available")
         else:
-            return -200
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
     
     @property
     def rain_forecast_avg(self) -> Union[int, float]:
@@ -126,15 +117,17 @@ class WeatherAgent:
             probs: ndarray = self.data.Variables(1).ValuesAsNumpy()  # type: ignore
             start = self.hour_index
             
-            if probs.size == 0 or start < 0:
-                return -1
+            if probs.size == 0:
+                log_event(f"No rain probabilities available", "ERROR")
+                raise RuntimeError("No rain probability data")
             
             end = min(start + self.max_forecast_hours, len(probs))
             window = probs[start:end]
             
             return self.average(list(window))
         else:
-            return -1
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
 
     def precipitation_forecast(
         self,
@@ -156,14 +149,15 @@ class WeatherAgent:
             prec: ndarray = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
             start = self.hour_index
             
-            if prec.size == 0 or start < 0:
-                log_event(f"{prec}, {start}")
-                return []
+            if prec.size == 0:
+                log_event(f"No rain precipitation available", "ERROR")
+                raise RuntimeError("No rain precipitation data")
             
             end = min(start + hours, len(prec))
             return [float(p) for p in prec[start:end]]
         else:
-            return []
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
     
     def temperature_forecast(
         self,
@@ -186,13 +180,14 @@ class WeatherAgent:
             start = self.hour_index
             
             if temps.size == 0 or start < 0:
-                log_event(f"{temps}, {start}")
-                return []
+                log_event(f"No temperatures available", "ERROR")
+                raise RuntimeError("No temperature data")
             
             end = min(start + hours, len(temps))
             return [float(t) for t in temps[start:end]]
         else:
-            return []
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
 
     @property
     def precipitation(self) -> float:
@@ -208,11 +203,13 @@ class WeatherAgent:
         if self.data:
             prec = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
             try:
-                return float(prec[self.hour_index + 1])
+                return float(prec[self.hour_index])
             except (IndexError, ValueError):
-                return 0.0
+                log_event(f"Couldn't find temperature on index {self.hour_index} for temperature forecast {str(prec)}", "ERROR")
+                raise RuntimeError("No rain probability data")
         else:
-            return -1.0
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
 
     @property
     def weather_code(self) -> int:
@@ -230,9 +227,11 @@ class WeatherAgent:
             try:
                 return int(codes[self.hour_index])
             except (IndexError, ValueError):
-                return -1
+                log_event(f"Couldn't find temperature on index {self.hour_index} for weather codes {str(codes)}", "ERROR")
+                raise RuntimeError("No rain probability data")
         else:
-            return -2
+            log_event("Couldn't find any weather data", "ERROR")
+            raise RuntimeError("Weather data is not available")
 
     # @property
     # def weather(self) -> Tuple[Image, Color]:
@@ -262,6 +261,7 @@ class WeatherAgent:
             return sum(values) / len(values)
         except ZeroDivisionError:
             log_event(
-                "Couldn't calculate average: no weather data available"
+                "Couldn't calculate average: no weather data available",
+                "ERROR"
             )
             return -1

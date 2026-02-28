@@ -72,7 +72,7 @@ class HVV:
                 {"serviceID": "HHA-B:218_HHA-B", "stationIDs": ["Master:70054"]},
             ],
             "time": {"date": date, "time": time},
-            "maxList": 10,
+            "maxList": 15,
             "allStationsInChangingNode": True,
             "maxTimeOffset": 200,
             "useRealtime": True,
@@ -122,7 +122,15 @@ class HVV:
         """
         now = utils.tz_date()
         hour, minute = time.split(":")
-        return datetime(now.year, now.month, now.day, int(hour), int(minute), now.second)
+        try:
+            return datetime(now.year, now.month, now.day, int(hour), int(minute), now.second)
+        except:
+            log_event(
+                f"Couldn't parse hour and minute from time {time}\n"
+                "Note: time must be \"Hour:Minute\" format.",
+                "ERROR"
+            )
+            return datetime(0, 0, 0, 0, 0, 0, 0)
 
     @log_event("Getting arrivals list...")
     def _scrape_arrivals(
@@ -158,7 +166,7 @@ class HVV:
             arrival_info = arrival_info.split("+")
 
             time = self._to_datetime(arrival_info[0])
-            delay_minutes = int(arrival_info[1]) if len(arrival_info) > 1 else 0
+            delay_minutes = int(arrival_info[1]) if len(arrival_info) > 0 else 0
             delay = timedelta(minutes=delay_minutes)
 
             busses.append(
@@ -186,12 +194,18 @@ class HVV:
         
         machine = platform.uname()
         
-        if machine.system == "Linux" and machine.machine == "armv7l":        # my Raspberry Pi 2 :)
-            options.binary_location = "/usr/bin/chromium"
-            service = Service("/usr/bin/chromedriver")
-            return webdriver.Chrome(service=service, options=options)
-        else:
-            return webdriver.Chrome(options=options)
+        try:
+            if machine.system == "Linux" and machine.machine == "armv7l":        # my Raspberry Pi 2 :)
+                options.binary_location = "/usr/bin/chromium"
+                service = Service("/usr/bin/chromedriver")
+                return webdriver.Chrome(service=service, options=options)
+            else:
+                return webdriver.Chrome(options=options)
+        except Exception as e:
+            msg = (f"Can't find Chromium webdriver for system {machine.system}"
+            f"and machine {machine.machine}.\nOriginal error: {str(e)}")
+            log_event(msg, "FATAL")
+            raise OSError(msg)
     
     def _convert_response(
         self,
@@ -206,27 +220,36 @@ class HVV:
         Returns:
             GeoFoxResponse: GeoFoxResponse dataclass
         """
-        returnCode = data["returnCode"]
-        time = dacite.from_dict(data_class=GeoFoxTime, data=data["time"])
-        
-        for idx, _ in enumerate(data["departures"]):
-            if "delay" not in data["departures"][idx].keys():
-                data["departures"][idx]["delay"] = 0
+        try:
+            returnCode = data["returnCode"]
+            time = dacite.from_dict(data_class=GeoFoxTime, data=data["time"])
             
-            line_type = dacite.from_dict(data_class=GeoFoxDepartureLineType, data=data["departures"][idx]["line"]["type"])
-            line = dacite.from_dict(data_class=GeoFoxDepartureLine, data=data["departures"][idx]["line"])
-            station = dacite.from_dict(data_class=GeoFoxDepartureStation, data=data["departures"][idx]["station"])
-            departure = dacite.from_dict(data_class=GeoFoxDeparture, data=data["departures"][idx])
-            
-            data["departures"][idx]["line"]["type"] = line_type
-            data["departures"][idx]["line"] = line
-            data["departures"][idx]["station"] = station
-            data["departures"][idx] = departure
-        return GeoFoxResponse(
-            returnCode=returnCode,
-            time=time,
-            departures=data["departures"]
-        )
+            for idx, _ in enumerate(data["departures"]):
+                if "delay" not in data["departures"][idx].keys():
+                    data["departures"][idx]["delay"] = 0
+                
+                line_type = dacite.from_dict(data_class=GeoFoxDepartureLineType, data=data["departures"][idx]["line"]["type"])
+                line = dacite.from_dict(data_class=GeoFoxDepartureLine, data=data["departures"][idx]["line"])
+                station = dacite.from_dict(data_class=GeoFoxDepartureStation, data=data["departures"][idx]["station"])
+                departure = dacite.from_dict(data_class=GeoFoxDeparture, data=data["departures"][idx])
+                
+                data["departures"][idx]["line"]["type"] = line_type
+                data["departures"][idx]["line"] = line
+                data["departures"][idx]["station"] = station
+                data["departures"][idx] = departure
+            return GeoFoxResponse(
+                returnCode=returnCode,
+                time=time,
+                departures=data["departures"]
+            )
+        except RuntimeError as e:
+            log_event(f"HVV API has drastically changed and cannot be converted"
+                      f"into GeoFoxResponse\nOriginal error: {str(e)}", "ERROR")
+            return GeoFoxResponse(
+                returnCode="NOT OK",
+                time=GeoFoxTime("", ""),
+                departures=[]
+            )
     
     def _parse_geofox_data(
         self,

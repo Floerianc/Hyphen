@@ -12,6 +12,10 @@ from common.typing import (
     Color,
     Image
 )
+from common.logger import (
+    log_event,
+    logging
+)
 
 # Copied a lot from Samplebase.py
 
@@ -66,12 +70,12 @@ class Matrix(object):
             self.canvas.SetPixel(self.matrix.width-1, y, r, g, b)
 
     def draw_horizontal(
-            self,
-            y: int,
-            color: Color,
-            start: Optional[int] = None,
-            stop: Optional[int] = None
-        ) -> None:
+        self,
+        y: int,
+        color: Color,
+        start: Optional[int] = None,
+        stop: Optional[int] = None
+    ) -> None:
         """
         draw_horizontal Draws a horizontal line
 
@@ -127,9 +131,9 @@ class Matrix(object):
 
         Args:
             x1 (int): Corner 1
-            y1 (int): Corner 2
-            x2 (int): Corner 3
-            y2 (int): Corner 4
+            y1 (int): Corner 1
+            x2 (int): Corner 2
+            y2 (int): Corner 2
             color (Color): Color
         """
         r, g, b = color.r, color.g, color.b
@@ -139,14 +143,14 @@ class Matrix(object):
                 set_pixel(x, y, r, g, b)
 
     def draw_text(
-            self, 
-            x: int, 
-            y: int, 
-            color: Color,
-            text: str,
-            char_width: int = 6,
-            char_height: int = 9
-        ) -> None:
+        self, 
+        x: int, 
+        y: int, 
+        color: Color,
+        text: str,
+        char_width: int = 6,
+        char_height: int = 9
+    ) -> None:
         """
         draw_text Draws text onto the LED-Panel
 
@@ -200,10 +204,10 @@ class Matrix(object):
                     continue
     
     def interpret_font_size(
-            self, 
-            char_width: int,
-            char_height: int
-        ) -> str:
+        self, 
+        char_width: int,
+        char_height: int
+    ) -> str:
         """
         interpret_font_size Interprets the font the LED-Panel is going to use
 
@@ -224,6 +228,7 @@ class Matrix(object):
         if os.path.exists(os.path.abspath(path)):
             return path
         else:
+            log_event(f"Font not found\nPath: {os.path.abspath(path)}", logging.ERROR)
             raise ValueError(f"Font size does not exist in available fonts.\nPath: {os.path.abspath(path)}")
     
     def run(self) -> None:

@@ -1,4 +1,5 @@
 import time
+import common.logger as logger
 from core.hvv import HVV
 from core.weather import WeatherAgent
 from core.dates import DateHandler
@@ -17,3 +18,8 @@ def refresh_busses(hvv: HVV) -> None:
     while True:
         hvv.set_bus_arrivals()
         time.sleep(20)
+
+def refresh_log() -> None:
+    while True:
+        logger.cleanup()
+        time.sleep(86400)

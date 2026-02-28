@@ -1,5 +1,6 @@
 from RGBMatrixEmulator.emulation.canvas import Canvas
 from RGBMatrixEmulator import graphics
+import util.utils as utils
 from typing import Optional
 from core.visuals import (
     CLR_BRIGHTER_BLUE,
@@ -184,8 +185,10 @@ class RainBar:
             font_path -- The path to the font the text will use
         """
         text = str(round(precipitation, 1))
+        full_path = utils.resolve_path(font_path)
+        
         font = graphics.Font()
-        font.LoadFont(font_path)
+        font.LoadFont(full_path)
         font_color = graphics.Color(255, 255, 255)
 
         graphics.DrawText(

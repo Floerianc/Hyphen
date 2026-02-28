@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.3.3"
+__version__ = "3.4.2"
 
 # external imports
 import os
@@ -427,8 +427,11 @@ if __name__ == "__main__":
         - Added graphs for temperature and precipitation                                (X)
         - Added common MatrixGraph class                                                (X)
             - Big class for re-usable graphs on the RGBMatrix                           (X)
-    Log Clean-up                                                                        (IN PROGRESS...)
-        - Better error handling (Different levels, not just DEBUG and INFO)             (IN PROGRESS...)
-        - Clean-up INFO and DEBUG logs every 24 hrs.                                    (IN PROGRESS...)
-        - Clean-up after every restart                                                  (IN PROGRESS...)
+    Log Clean-up                                                                        (X)     <--- Continue Here
+        - Better error handling (Different levels, not just DEBUG and INFO)             (X)
+        - Clean-up INFO and DEBUG logs every 24 hrs.                                    (X)
+        - Clean-up after every restart                                                  (X)
+    Modernize threading process                                                         (IN PROGRESS...)
+        - Use Asyncio instead                                                           (IN PROGRESS...)
+    Uptime monitor                                                                      (NOT STARTED YET)
 """

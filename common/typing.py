@@ -24,12 +24,20 @@ class Color:
     g: int
     b: int
     
+    def __post_init__(self) -> None:
+        assert self.r < 256 and self.r >= 0
+        assert self.g < 256 and self.g >= 0
+        assert self.b < 256 and self.b >= 0
+    
     @property
     def rgb(self) -> Tuple[int, int, int]:
         return (self.r, self.g, self.b)
 
     @rgb.setter
-    def rgb(self, value: Tuple[int, int, int]) -> None:
+    def rgb(
+        self,
+        value: Tuple[int, int, int]
+    ) -> None:
         self.r, self.g, self.b = value
 
 @dataclass
