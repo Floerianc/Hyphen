@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import (
@@ -11,9 +12,12 @@ from typing import (
     List,
     Mapping,
     Tuple,
-    Optional
+    Optional,
+    Union
 )
 from threading import Thread
+from common.logger import log_event
+
 
 @dataclass
 class Color:
@@ -140,11 +144,21 @@ class GeoFoxResponse:
 
 # Unused for now
 class StopableThread(Thread):
-    def __init__(self, group: None = None, target: Callable[..., object] | None = None, name: str | None = None, args: Iterable[Any] = ..., kwargs: Mapping[str, Any] | None = None, *, daemon: bool | None = None) -> None:    # type: ignore
+    def __init__(
+        self,
+        interval: Union[float, int],
+        group: None = None,
+        target: Callable[..., object] | None = None,
+        name: str | None = None, args: Iterable[Any] = ...,
+        kwargs: Mapping[str, Any] | None = None,
+        *,
+        daemon: bool | None = None,
+    ) -> None:    # type: ignore
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         self.stop: bool = False
         self.target = target
         self.args = args
+        self.interval = interval
     
     @property
     def stopped(self) -> bool:
@@ -154,8 +168,16 @@ class StopableThread(Thread):
         self.stop = boolean
     
     def run(self) -> None:
+        next_time = time.time() + self.interval
         while True and not self.stopped and self.target:
-            self.target(*self.args)
+            time.sleep(max(0, next_time - time.time()))
+            try:
+                self.target(*self.args)
+            except Exception:
+                log_event("Error while executing repetitive method.", "ERROR")
+            next_time += (time.time() - next_time) // self.interval * self.interval + self.interval
+        else:
+            ...
 
 
 Image = List[List[Pixel]]

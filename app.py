@@ -2,12 +2,11 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.4.2"
+__version__ = "3.5.2"
 
 # external imports
 import os
 import time
-from threading import Thread
 from typing import (
     Callable,
     List,
@@ -16,7 +15,6 @@ from typing import (
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # local imports
-import core.threads as threads
 import core.hvv as hvv
 from core.enums import *
 from core.canvas import Matrix
@@ -25,7 +23,10 @@ from core.dates import DateHandler
 from core.weather import WeatherAgent
 from core.pollen import DWDPollen
 from common.logger import log_event
-from common.typing import Box
+from common.typing import (
+    Box,
+    StopableThread
+)
 from widgets.RainBar import RainBar
 from widgets.MatrixGraph import MatrixGraph
 
@@ -48,25 +49,19 @@ class Hyphen(Matrix):
         self.pollen = DWDPollen()
 
         # Threads
-        self.dt_thread = Thread(
-            target=threads.refresh_time,
-            args=[
-                self.date_handler,
-            ],
+        self.dt_thread = StopableThread(
+            interval=0.5,
+            target=self.date_handler.update_datetime,
             daemon=True,
         )
-        self.weather_thread = Thread(
-            target=threads.refresh_ui,
-            args=[
-                self.weather,
-            ],
+        self.weather_thread = StopableThread(
+            interval=60,
+            target=self.weather.update,
             daemon=True,
         )
-        self.hvv_thread = Thread(
-            target=threads.refresh_busses,
-            args=[
-                self.hvv,
-            ],
+        self.hvv_thread = StopableThread(
+            interval=20,
+            target=self.hvv.set_bus_arrivals,
             daemon=True,
         )
 
@@ -169,7 +164,7 @@ class Hyphen(Matrix):
                 x=name_x,
                 y=name_y,
                 color=CLR_WHITE,
-                text=bus.destination.strip()[0:3],
+                text=bus.destination.strip(" ")[0:3],
                 char_width=4,
                 char_height=6,
             )
@@ -198,6 +193,15 @@ class Hyphen(Matrix):
                 text=f"+{delay_minutes}",
                 char_width=4,
                 char_height=6,
+            )
+        else:
+            self.draw_text(
+                x=2,
+                y=16,
+                color=CLR_RED,
+                text="Keine Busrouten",
+                char_width=4,
+                char_height=6
             )
 
     def render_news_page(self) -> None:
@@ -345,6 +349,7 @@ if __name__ == "__main__":
                 - Raindrop icon                                                         (X)
                 - Rain bar                                                              (X)
                 - Rain forecast                                                         (X)
+                - Fix visual bug with double-digits values (clips into line)            (X)        <--- Continue here
             - News page                                                                 (IN PROGRESS...)
             - Bus line page                                                             (X)
                 - Found alternative for HVV API (Scraping with PlayWright)              (X)
@@ -352,6 +357,7 @@ if __name__ == "__main__":
                 - Drawing all components to the screen                                  (X)
                 - PlayWright does NOT work on Raspberry Pi 2 soooo Selentium            (X)
                     - Found work-around for chromium drivers on different OS            (X)
+                - Added visual indicator if HVV does not respond
             - Pollen page                                                               (X)
             - Untis page                                                                (IN PROGRESS...)
     Converter for images instead of large pixel matrices                                (X)
@@ -431,7 +437,8 @@ if __name__ == "__main__":
         - Better error handling (Different levels, not just DEBUG and INFO)             (X)
         - Clean-up INFO and DEBUG logs every 24 hrs.                                    (X)
         - Clean-up after every restart                                                  (X)
-    Modernize threading process                                                         (IN PROGRESS...)
-        - Use Asyncio instead                                                           (IN PROGRESS...)
+    Modernize threading process                                                         (X)
+        - Use Asyncio instead                                                           (CANCELLED)
+        - Instead, using StopableThread (typing.py) now                                 (X)
     Uptime monitor                                                                      (NOT STARTED YET)
 """

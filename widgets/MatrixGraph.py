@@ -31,10 +31,16 @@ class MatrixGraph:
         self.color = graph_color
         self.data = data
     
-    def _get_absolute_x(self, x: int) -> int:
+    def _get_absolute_x(
+        self,
+        x: int
+    ) -> int:
         return self.x + x
     
-    def _get_absolute_y(self, y: int) -> int:
+    def _get_absolute_y(
+        self,
+        y: int
+    ) -> int:
         return self.y + y
     
     def _draw_base(self) -> None:
@@ -64,12 +70,14 @@ class MatrixGraph:
         maximum = self._get_max_limit()
         gap = 1
         char_width = 4
-        x = self._get_absolute_x(0 - (gap + char_width))
+        
+        min_x = self._get_absolute_x(0 - (gap + (char_width * len(str(minimum)))))
+        max_x = self._get_absolute_x(0 - (gap + (char_width * len(str(maximum)))))
         min_y = self._get_absolute_y(self.height)
         max_y = self._get_absolute_y(0 + 5)
         
         self.canvas.draw_text(
-            x=(x - 4) if minimum < 0 else x,  # if there's a "-", then you need more space. otherwise, it will clip into the base
+            x=(min_x - 4) if minimum < 0 else min_x,  # if there's a "-", then you need more space. otherwise, it will clip into the base
             y=min_y,
             color=Color(255, 255, 255),
             text=str(minimum),
@@ -77,7 +85,7 @@ class MatrixGraph:
             char_height=6
         )
         self.canvas.draw_text(
-            x=(x - 4) if maximum < 0 else x,
+            x=(max_x - 4) if maximum < 0 else max_x,
             y=max_y,
             color=Color(255, 255, 255),
             text=str(maximum),
