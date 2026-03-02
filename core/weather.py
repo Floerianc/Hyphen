@@ -29,7 +29,7 @@ class WeatherAgent:
             retries=5,
             backoff_factor=0.2
         )
-        self.openmeteo = openmeteo_requests.Client(session=self.retry_session)
+        self.openmeteo = openmeteo_requests.Client(session=self.retry_session) # type: ignore
         
         self.data = self._fetch_weather()
 

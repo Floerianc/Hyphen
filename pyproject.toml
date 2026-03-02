@@ -1,6 +1,6 @@
 [project]
 name = "Hyphen"
-version = "3.5.2"
+version = "3.5.4"
 description = "A LED-Panel App."
 readme = "README.md"
 requires-python = ">=3.12"

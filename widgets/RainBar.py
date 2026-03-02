@@ -10,14 +10,14 @@ from common.typing import Color
 
 class RainBar:
     def __init__(
-            self, 
-            canvas: Optional[Canvas],
-            x_pos: int,
-            y_pos: int,
-            width: int,
-            height: int,
-            color: Color
-        ) -> None:
+        self, 
+        canvas: Optional[Canvas],
+        x_pos: int,
+        y_pos: int,
+        width: int,
+        height: int,
+        color: Color
+    ) -> None:
         """
         __init__ Initializes a rain bar to roughly visualize
         the amount of rain coming down in the current hour

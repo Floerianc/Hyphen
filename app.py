@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.5.2"
+__version__ = "3.5.4"
 
 # external imports
 import os
@@ -22,7 +22,10 @@ from core.visuals import *
 from core.dates import DateHandler
 from core.weather import WeatherAgent
 from core.pollen import DWDPollen
-from common.logger import log_event
+from common.logger import (
+    log_event,
+    log_decorator
+)
 from common.typing import (
     Box,
     StopableThread
@@ -34,7 +37,7 @@ from widgets.MatrixGraph import MatrixGraph
 
 
 class Hyphen(Matrix):
-    @log_event("Initializing Program...")
+    @log_decorator("Initializing Program...")
     def __init__(self, *args, **kwargs):
         """
         __init__ Initializes the LED-Panels Canvas and its functions
@@ -60,7 +63,7 @@ class Hyphen(Matrix):
             daemon=True,
         )
         self.hvv_thread = StopableThread(
-            interval=20,
+            interval=15,
             target=self.hvv.set_bus_arrivals,
             daemon=True,
         )
@@ -138,63 +141,65 @@ class Hyphen(Matrix):
         )
 
     def render_bus_page(self) -> None:
-        for idx, bus in enumerate(self.hvv.next_busses):
-            # bus line logo
-            img_start_x = 1
-            img_start_y = 1 + (8 * idx)
-            text_x = (img_start_x + 3) + (2 * (3 - len(str(bus.line))))
-            text_y = img_start_y + 6
+        next_busses = self.hvv.next_busses
+        if len(next_busses) > 0:
+            for idx, bus in enumerate(next_busses):
+                # bus line logo
+                img_start_x = 1
+                img_start_y = 1 + (8 * idx)
+                text_x = (img_start_x + 3) + (2 * (3 - len(str(bus.line))))
+                text_y = img_start_y + 6
 
-            self.draw_image(
-                image=HVV_LOGO_BASE, start_x=img_start_x, start_y=img_start_y
-            )
-            self.draw_text(
-                x=text_x,
-                y=text_y,
-                color=CLR_WHITE,
-                text=str(bus.line),
-                char_width=4,
-                char_height=6,
-            )
+                self.draw_image(
+                    image=HVV_LOGO_BASE, start_x=img_start_x, start_y=img_start_y
+                )
+                self.draw_text(
+                    x=text_x,
+                    y=text_y,
+                    color=CLR_WHITE,
+                    text=str(bus.line),
+                    char_width=4,
+                    char_height=6,
+                )
 
-            # destination name
-            name_x = 1 + len(HVV_LOGO_BASE[0]) + 2  # 1 (margin) + length of logo + gap
-            name_y = text_y
-            self.draw_text(
-                x=name_x,
-                y=name_y,
-                color=CLR_WHITE,
-                text=bus.destination.strip(" ")[0:3],
-                char_width=4,
-                char_height=6,
-            )
+                # destination name
+                name_x = 1 + len(HVV_LOGO_BASE[0]) + 2  # 1 (margin) + length of logo + gap
+                name_y = text_y
+                self.draw_text(
+                    x=name_x,
+                    y=name_y,
+                    color=CLR_WHITE,
+                    text=bus.destination.replace(" ", "")[0:3],
+                    char_width=4,
+                    char_height=6,
+                )
 
-            # time of arrival
-            arrival_x = name_x + 12 + 1  # 12 = length of destination text, 1 = gap
-            arrival_y = name_y
-            self.draw_text(
-                x=arrival_x,
-                y=arrival_y,
-                color=CLR_CYAN,
-                text=bus.time.strftime("%H:%M"),
-                char_width=4,
-                char_height=6,
-            )
+                # time of arrival
+                arrival_x = name_x + 12 + 1  # 12 = length of destination text, 1 = gap
+                arrival_y = name_y
+                self.draw_text(
+                    x=arrival_x,
+                    y=arrival_y,
+                    color=CLR_CYAN,
+                    text=bus.time.strftime("%H:%M"),
+                    char_width=4,
+                    char_height=6,
+                )
 
-            # delay
-            delay_x = arrival_x + 20 + 1  # 20 = length of time of arrival text, 1 = gap
-            delay_y = arrival_y
-            delay_minutes = round(bus.delay.seconds / 60)
-            delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
-            self.draw_text(
-                x=delay_x,
-                y=delay_y,
-                color=delay_clr,
-                text=f"+{delay_minutes}",
-                char_width=4,
-                char_height=6,
-            )
-        else:
+                # delay
+                delay_x = arrival_x + 20 + 1  # 20 = length of time of arrival text, 1 = gap
+                delay_y = arrival_y
+                delay_minutes = round(bus.delay.seconds / 60)
+                delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
+                self.draw_text(
+                    x=delay_x,
+                    y=delay_y,
+                    color=delay_clr,
+                    text=f"+{delay_minutes}",
+                    char_width=4,
+                    char_height=6,
+                )
+        elif len(next_busses) <= 0:
             self.draw_text(
                 x=2,
                 y=16,
@@ -370,6 +375,13 @@ if __name__ == "__main__":
             Now sometimes the weather data just doesn't load at all.                    (FIX?)
                 No Weather data from OpenMeteo? Try OpenMeteo implementation instead    (X)
         - HVV doesn't return "departures" sometimes, do better error handling           (X)
+        - Weather data does not update in real-time                                     (IN PROGRESS...)        <-- Continue here
+            Problem description:
+            After 12am the hour index sets back to 0 which gets the
+            items from the same day because it does not update properly
+            although it requests new data every 60 seconds on another thread and
+            the ID of the response also changes so obviously the data is new and
+            changes frequently but still wraps around to the same day
     Optimization:                                                                       (X)
         - Optimize Selenium options                                                     (X)
         - Research if other browsers are faster                                         (X)

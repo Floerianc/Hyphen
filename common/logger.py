@@ -1,5 +1,8 @@
 import logging
-from typing import Callable
+from typing import (
+    Callable,
+    Union
+)
 from core.dates import DateHandler
 
 def setup_logger(
@@ -18,15 +21,30 @@ def setup_logger(
     
     return logger
 
-# logging.basicConfig(
-#     filename="./logs/NEWEST_LOG.log",
-#     level=logging.INFO,
-#     format="%(asctime)s %(levelname)s %(message)s",
-#     filemode="w"
-# )
-# log = logging.getLogger(__name__)
-
 def log_event(
+    msg: str,
+    _level: Union[int, str] = logging.NOTSET
+) -> None:
+    # log.info(f"{func.__name__}: {msg}")
+    if isinstance(_level, str):
+        level = logging._nameToLevel.get(_level, logging.NOTSET)
+    else:
+        level = _level
+    
+    if level >= logging.ERROR:
+        error_logger = setup_logger(
+            log_name="error logger",
+            log_file=get_exception_log(),
+            level=logging.ERROR,
+            filemode="a"
+        )
+        logger.exception(msg=msg)
+        error_logger.exception(msg=msg)
+        del error_logger
+    else:
+        logger.log(level=level, msg=msg)
+
+def log_decorator(
     msg: str,
     _level: int | str = logging.INFO,
 ):
@@ -40,24 +58,7 @@ def log_event(
     """
     def decorator(func: Callable):
         def wrapper(*args, **kwargs):
-            # log.info(f"{func.__name__}: {msg}")
-            if isinstance(_level, str):
-                level = logging._nameToLevel.get(_level, logging.NOTSET)
-            else:
-                level = _level
-            
-            if level >= logging.ERROR:
-                error_logger = setup_logger(
-                    log_name="error logger",
-                    log_file=get_exception_log(),
-                    level=logging.ERROR,
-                    filemode="a"
-                )
-                logger.exception(msg=msg)
-                error_logger.exception(msg=msg)
-                del error_logger
-            else:
-                logger.log(level=level, msg=msg)
+            log_event(msg=msg, _level=_level)
             return func(*args, **kwargs) # type: ignore
         return wrapper
     return decorator
@@ -67,6 +68,7 @@ def cleanup() -> None:
 
 def get_exception_log() -> str:
     return f"./logs/{date.date.strftime("%Y_%m_%d_log.log")}"
+
 
 date = DateHandler()
 LOG1_FILE = "./logs/NEWESTLOG.log"

@@ -21,7 +21,10 @@ from common.typing import (
     GeoFoxDepartureStation,
     GeoFoxTime
 )
-from common.logger import log_event
+from common.logger import (
+    log_event,
+    log_decorator
+)
 
 
 class HVV:
@@ -132,7 +135,7 @@ class HVV:
             )
             return datetime(0, 0, 0, 0, 0, 0, 0)
 
-    @log_event("Getting arrivals list...")
+    @log_decorator("Getting arrivals list...")
     def _scrape_arrivals(
         self,
         driver: webdriver.Chrome
@@ -179,7 +182,7 @@ class HVV:
             )
         return busses
 
-    @log_event("Loading Chromium Drivers...")
+    @log_decorator("Loading Chromium Drivers...")
     def _get_chrome_driver(self) -> webdriver.Chrome:
         """Returns a chromium webdriver
 
@@ -287,7 +290,7 @@ class HVV:
             )
         return busses
     
-    @log_event("Sending request to HVV GeoFox")
+    @log_decorator("Sending request to HVV GeoFox")
     def get_geofox_response(self) -> GeoFoxResponse:
         """Returns the converted GeoFox API response for the
         arriving bus lines at your bus station
@@ -317,7 +320,7 @@ class HVV:
                 log_event(f"No response from HVV GeoFox. Can't return bus times.\nException: {e}")
                 return GeoFoxResponse("NOT OK", GeoFoxTime("00.00.0000", "00:00"), [])
     
-    @log_event("Getting bus arrivals...")
+    @log_decorator("Getting bus arrivals...")
     def set_bus_arrivals(self) -> None:
         rsp = self.get_geofox_response()
         if rsp:

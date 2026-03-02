@@ -18,7 +18,7 @@ class DateHandler:
         
         self.date = datetime.now(tz)
         self.tz = self.date.astimezone(tz).tzinfo
-        self.tzname = self.tz.tzname(self.date.astimezone(tz))
+        self.tzname = self.tz.tzname(self.date.astimezone(tz)) # type: ignore
         
         if not self.tzname:
             raise ValueError(
