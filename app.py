@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.5.4"
+__version__ = "3.6.0"
 
 # external imports
 import os
@@ -214,9 +214,15 @@ class Hyphen(Matrix):
 
     def render_pollen_page(self) -> None:
         self.pollen.update()
-        sev = self.pollen.get_pollen_severity(["Graeser", "Birke", "Roggen", "Esche"])
+        sev = self.pollen.get_n_pollen(4)
+        
         self.draw_text(
-            x=19, y=0 + 6, color=CLR_WHITE, text="Pollen", char_width=4, char_height=6
+            x=19,
+            y=0 + 6,
+            color=CLR_WHITE,
+            text="Pollen",
+            char_width=4,
+            char_height=6
         )
 
         positions: List[Box] = [
@@ -240,11 +246,14 @@ class Hyphen(Matrix):
             else:  # right side
                 x = box.x1
             y = box.y2
+            
+            name_slice = len(pollen) if len(pollen) < 8 else 7
+            
             self.draw_text(
                 x=x,
                 y=y,
                 color=pollen_severity.color,
-                text=pollen,
+                text=pollen[:name_slice],
                 char_width=4,
                 char_height=6,
             )
@@ -313,7 +322,10 @@ if __name__ == "__main__":
     try:
         app.process()
     except KeyboardInterrupt:
-        pass
+        log_event(
+            msg="Uncaught Exception crashed the program.",
+            _level="FATAL"
+        )
 
 
 """ TODO
@@ -354,7 +366,7 @@ if __name__ == "__main__":
                 - Raindrop icon                                                         (X)
                 - Rain bar                                                              (X)
                 - Rain forecast                                                         (X)
-                - Fix visual bug with double-digits values (clips into line)            (X)        <--- Continue here
+                - Fix visual bug with double-digits values (clips into line)            (X)
             - News page                                                                 (IN PROGRESS...)
             - Bus line page                                                             (X)
                 - Found alternative for HVV API (Scraping with PlayWright)              (X)
@@ -362,8 +374,10 @@ if __name__ == "__main__":
                 - Drawing all components to the screen                                  (X)
                 - PlayWright does NOT work on Raspberry Pi 2 soooo Selentium            (X)
                     - Found work-around for chromium drivers on different OS            (X)
-                - Added visual indicator if HVV does not respond
+                - Added visual indicator if HVV does not respond                        (X)
             - Pollen page                                                               (X)
+                - Show Pollen based on relevancy, not by hard coding them               (X)
+                - Fixed visual bug with the name clipping out of bounds                 (X)
             - Untis page                                                                (IN PROGRESS...)
     Converter for images instead of large pixel matrices                                (X)
         - Built converter from .png to pixels                                           (X)
@@ -445,7 +459,7 @@ if __name__ == "__main__":
         - Added graphs for temperature and precipitation                                (X)
         - Added common MatrixGraph class                                                (X)
             - Big class for re-usable graphs on the RGBMatrix                           (X)
-    Log Clean-up                                                                        (X)     <--- Continue Here
+    Log Clean-up                                                                        (X)
         - Better error handling (Different levels, not just DEBUG and INFO)             (X)
         - Clean-up INFO and DEBUG logs every 24 hrs.                                    (X)
         - Clean-up after every restart                                                  (X)

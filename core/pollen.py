@@ -71,3 +71,32 @@ class DWDPollen:
         return {
             pollen_name: self.sev_map[data[pollen_name]['today']] for pollen_name in pollen
         }
+    
+    def get_today_pollen(self) -> Dict[str, str]:
+        """Returns the pollen name and pollen severity (e.g. 1-2, 2-3) for
+        each pollen type
+
+        Returns:
+            Dict[str, str]: Every pollen today
+        """
+        pollen = self.get_pollen()
+        return {p: pollen[p]["today"] for p in pollen}
+    
+    def get_n_pollen(
+        self,
+        n: int
+    ) -> Dict[str, PollenSeverity]:
+        """Returns the top n pollen for today
+
+        If n = 5 the method returns the top 5 pollen today.
+
+        Args:
+            n (int): Value of n
+
+        Returns:
+            Dict[str, PollenSeverity]: Top n pollen
+        """
+        data = self.get_today_pollen()
+        n = n if n < len(data) else len(data)
+        sorted_items = sorted(data.items(), key=lambda p: p[1], reverse=True)
+        return {k: self.sev_map.get(v, self.sev_map["NDF"]) for k, v in sorted_items[:n]}

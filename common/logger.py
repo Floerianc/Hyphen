@@ -79,5 +79,5 @@ formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
 logger = setup_logger(
     log_name=__name__,
     log_file=LOG1_FILE,
-    filemode="a"
+    filemode="w"
 )

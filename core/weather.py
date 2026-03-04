@@ -1,6 +1,12 @@
+import math
 import requests_cache
 import openmeteo_requests
 from numpy import ndarray
+from datetime import (
+    timedelta,
+    timezone,
+    datetime
+)
 from openmeteo_sdk.VariablesWithTime import VariablesWithTime
 from retry_requests import retry
 from typing import (
@@ -70,6 +76,19 @@ class WeatherAgent:
         # print(str(self.session.cache.responses))
     
     @property
+    def hourly_variable_len(self) -> int:
+        if self.data:
+            temps = self.data.Variables(0)
+            if temps:
+                return temps.ValuesLength()
+            else:
+                log_event("No temperature data", "WARN")
+                return -1
+        else:
+            log_event("Weather data is not set.", "WARN")
+            return -1
+    
+    @property
     def hour_index(self) -> int:
         """Returns the current hour. Useful for selecting
         an item in a list
@@ -77,7 +96,16 @@ class WeatherAgent:
         Returns:
             int: Current hour
         """
-        return self.date_handler.date.hour
+        if self.data:
+            utc_date = self.date_handler.date.astimezone(timezone.utc)
+            utc_data_start = datetime.fromtimestamp(self.data.Time(), timezone.utc)
+            time_delta: timedelta = utc_date - utc_data_start
+            index = int(time_delta.total_seconds()) // (60**2)
+            return max(0, min(index, self.hourly_variable_len))
+        else:
+            # fallback
+            log_event("Weather data is not set.", "WARN")
+            return self.date_handler.date.hour
     
     @property
     def current_temperature(self) -> float:
