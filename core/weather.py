@@ -1,14 +1,10 @@
-import math
-import requests_cache
-import openmeteo_requests
-from numpy import ndarray
+import requests
+from os import environ
 from datetime import (
     timedelta,
     timezone,
     datetime
 )
-from openmeteo_sdk.VariablesWithTime import VariablesWithTime
-from retry_requests import retry
 from typing import (
     Optional,
     List,
@@ -16,6 +12,7 @@ from typing import (
 )
 from core.dates import DateHandler
 from common.logger import log_event
+from common.typing import Weather
 
 
 class WeatherAgent:
@@ -26,51 +23,47 @@ class WeatherAgent:
         self.date_handler = date
         self.max_forecast_hours = 6
         
-        self.session = requests_cache.CachedSession(
-            cache_name='.cache',
-            expire_after=180
-        )
-        self.retry_session = retry(
-            self.session,
-            retries=5,
-            backoff_factor=0.2
-        )
-        self.openmeteo = openmeteo_requests.Client(session=self.retry_session) # type: ignore
+        # self.session = requests_cache.CachedSession(
+        #     cache_name='.cache',
+        #     expire_after=180
+        # )
+        # self.retry_session = retry(
+        #     self.session,
+        #     retries=5,
+        #     backoff_factor=0.2
+        # )
+        # self.openmeteo = openmeteo_requests.Client(session=self.retry_session
         
+        self.session = requests.Session()
         self.data = self._fetch_weather()
 
-    def _fetch_weather(self) -> Optional[VariablesWithTime]:
+    def _fetch_weather(self) -> Optional[Weather]:
         """Returns the "Hourly" data of the Weather API
 
         Returns:
             Optional[VariablesWithTime]: Variables from Openmeteo
         """
-        url = "https://api.open-meteo.com/v1/forecast"
+        url = environ.get("WEATHER_URL", "")
         params = {
-            "latitude": 53.55,
-            "longitude": 9.9333,
-            "hourly": [
-                "temperature_2m",
-                "precipitation_probability",
-                "precipitation",
-                "weather_code"
-            ],
-            "models": "best_match",
-            "timezone": "auto",
+            "latitude": float(environ.get("WEATHER_LATITUDE", "")),
+            "longitude": float(environ.get("WEATHER_LONGITUDE", "")),
+            "hourly": ["temperature_2m", "precipitation_probability", "precipitation"],
+            "current": ["temperature_2m", "weather_code", "precipitation"],
+            "timezone": environ.get("WEATHER_TIMEZONE", ""),
             "forecast_days": 1,
             "timeformat": "unixtime",
         }
         try:
-            rsps = self.openmeteo.weather_api(url, params=params)
-            rsp = rsps[0]
-            return rsp.Hourly()
+            r = self.session.get(url, params=params, timeout=15)
+            r.raise_for_status()
+            return Weather._from_dict(r.json())
         except Exception as e:
             log_event(f"Weather API request failed: {str(e)}")
             return None
     
     def update(self) -> None:
         new_data = self._fetch_weather()
-        if new_data:
+        if new_data is not None:
             self.data = new_data
         # print(self.session.cache.urls())
         # print(str(self.session.cache.responses))
@@ -78,9 +71,9 @@ class WeatherAgent:
     @property
     def hourly_variable_len(self) -> int:
         if self.data:
-            temps = self.data.Variables(0)
+            temps = self.data.hourly.temperature_2m
             if temps:
-                return temps.ValuesLength()
+                return len(temps)
             else:
                 log_event("No temperature data", "WARN")
                 return -1
@@ -98,7 +91,7 @@ class WeatherAgent:
         """
         if self.data:
             utc_date = self.date_handler.date.astimezone(timezone.utc)
-            utc_data_start = datetime.fromtimestamp(self.data.Time(), timezone.utc)
+            utc_data_start = datetime.fromtimestamp(self.data.hourly.time[0], timezone.utc)
             time_delta: timedelta = utc_date - utc_data_start
             index = int(time_delta.total_seconds()) // (60**2)
             return max(0, min(index, self.hourly_variable_len))
@@ -120,10 +113,9 @@ class WeatherAgent:
             float: Current temperature
         """
         if self.data:
-            temps = self.data.Variables(0).ValuesAsNumpy()  # type: ignore
             try:
-                return float(temps[self.hour_index])
-            except (IndexError, ValueError) as e:
+                return self.data.current.temperature_2m
+            except (IndexError, ValueError):
                 log_event("Couldn't find the current temperature", "ERROR")
                 raise RuntimeError("No temperature available")
         else:
@@ -142,17 +134,17 @@ class WeatherAgent:
             Union[int, float]: Average rain forcast probability
         """
         if self.data:
-            probs: ndarray = self.data.Variables(1).ValuesAsNumpy()  # type: ignore
+            probs = self.data.hourly.precipitation_probability
             start = self.hour_index
             
-            if probs.size == 0:
+            if len(probs) == 0:
                 log_event(f"No rain probabilities available", "ERROR")
                 raise RuntimeError("No rain probability data")
             
             end = min(start + self.max_forecast_hours, len(probs))
             window = probs[start:end]
             
-            return self.average(list(window))
+            return self.average(window)
         else:
             log_event("Couldn't find any weather data", "ERROR")
             raise RuntimeError("Weather data is not available")
@@ -174,10 +166,10 @@ class WeatherAgent:
             List[float]: Precipitation forecast in mm
         """
         if self.data:
-            prec: ndarray = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
+            prec = self.data.hourly.precipitation
             start = self.hour_index
             
-            if prec.size == 0:
+            if len(prec) == 0:
                 log_event(f"No rain precipitation available", "ERROR")
                 raise RuntimeError("No rain precipitation data")
             
@@ -204,10 +196,10 @@ class WeatherAgent:
             List[float]: Temperature forecast in celsius
         """
         if self.data:
-            temps: ndarray = self.data.Variables(0).ValuesAsNumpy() # type: ignore
+            temps = self.data.hourly.temperature_2m
             start = self.hour_index
             
-            if temps.size == 0 or start < 0:
+            if len(temps) == 0:
                 log_event(f"No temperatures available", "ERROR")
                 raise RuntimeError("No temperature data")
             
@@ -229,12 +221,11 @@ class WeatherAgent:
             float: Current precipitation in mm
         """
         if self.data:
-            prec = self.data.Variables(2).ValuesAsNumpy()  # type: ignore
             try:
-                return float(prec[self.hour_index])
+                return self.data.current.precipitation
             except (IndexError, ValueError):
-                log_event(f"Couldn't find temperature on index {self.hour_index} for temperature forecast {str(prec)}", "ERROR")
-                raise RuntimeError("No rain probability data")
+                log_event(f"Couldn't find precipitation.", "ERROR")
+                raise RuntimeError("No rain data")
         else:
             log_event("Couldn't find any weather data", "ERROR")
             raise RuntimeError("Weather data is not available")
@@ -251,12 +242,11 @@ class WeatherAgent:
             float: Current precipitation in mm
         """
         if self.data:
-            codes = self.data.Variables(3).ValuesAsNumpy()  # type: ignore
             try:
-                return int(codes[self.hour_index])
+                return self.data.current.weather_code
             except (IndexError, ValueError):
-                log_event(f"Couldn't find temperature on index {self.hour_index} for weather codes {str(codes)}", "ERROR")
-                raise RuntimeError("No rain probability data")
+                log_event(f"Couldn't find weather code", "ERROR")
+                raise RuntimeError("No weather code data")
         else:
             log_event("Couldn't find any weather data", "ERROR")
             raise RuntimeError("Weather data is not available")
@@ -265,7 +255,7 @@ class WeatherAgent:
     # def weather(self) -> Tuple[Image, Color]:
     #     code = self.weather_code
     #     if code != -1:
-    #         return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))  # type: ignore
+    #         return WMO_MAP.get(code, (IMG_SUN, CLR_SUN))
     #     return ([[Pixel(True)]], CLR_RED)
 
     def average(

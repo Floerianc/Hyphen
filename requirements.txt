@@ -1,5 +1,6 @@
 attrs==25.3.0
 bdfparser==2.2.0
+beautifulsoup4==4.14.3
 cache-requests==4.0.0
 cattrs==25.1.1
 certifi==2025.11.12
@@ -26,6 +27,7 @@ pyee==13.0.0
 pygame==2.6.1
 pysocks==1.7.1
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
 pytz==2025.2
 qh3==1.5.3
 redis==6.2.0

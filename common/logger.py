@@ -69,6 +69,7 @@ def cleanup() -> None:
 def get_exception_log() -> str:
     return f"./logs/{date.date.strftime("%Y_%m_%d_log.log")}"
 
+logging.getLogger().addHandler(logging.StreamHandler())
 
 date = DateHandler()
 LOG1_FILE = "./logs/NEWESTLOG.log"

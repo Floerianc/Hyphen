@@ -1,12 +1,18 @@
 import os
 import sys
 import argparse
+from dataclasses import dataclass
 from RGBMatrixEmulator import (
     RGBMatrix,
     RGBMatrixOptions,
     graphics
 )
-from typing import Optional
+from typing import (
+    Optional,
+    Union,
+    List,
+    Tuple
+)
 from util.utils import FONT_PATH
 from common.typing import (
     Color,
@@ -16,6 +22,64 @@ from common.logger import (
     log_event,
     logging
 )
+
+
+@dataclass
+class Table:
+    x: int
+    y: int
+    rows: int
+    columns: int
+    col_width: Union[int, List[int]]
+    col_height: Union[int, List[int]]
+    
+    def __post_init__(self) -> None:
+        self.positions: List[List[Tuple[int, int]]] = []
+        
+        for row in range(self.rows):
+            self.positions.append([])
+            if isinstance(self.col_height, list):
+                y = self.y + sum(self.col_height[:row])
+            else:
+                y = self.y + (row * self.col_height)
+            y = y + row
+            
+            for col in range(self.columns):
+                if isinstance(self.col_width, list):
+                    x = self.x + sum(self.col_width[:col])
+                else:
+                    x = self.x + (col * self.col_width)
+                x = x + col + 1
+                
+                self.positions[row].append((x, y))
+    
+    def get_width(
+        self,
+        col: int
+    ) -> int:
+        """Returns the width of a given column
+
+        Args:
+            col (int): Column position: 0 is the first
+
+        Returns:
+            int: Width
+        """
+        return self.col_width[col] if isinstance(self.col_width, list) else self.col_width
+    
+    def get_height(
+        self,
+        row: int
+    ) -> int:
+        """Returns the height of a given column
+
+        Args:
+            row (int): Row: 0 is the first
+
+        Returns:
+            int: Height
+        """
+        return self.col_height[row] if isinstance(self.col_height, list) else self.col_height
 
 # Copied a lot from Samplebase.py
 
@@ -125,7 +189,8 @@ class Matrix(object):
         y1: int,
         x2: int,
         y2: int,
-        color: Color
+        color: Color,
+        filled: bool = True,
     ) -> None:
         """Draws a filled box on the LED-Panel
 
@@ -138,9 +203,17 @@ class Matrix(object):
         """
         r, g, b = color.r, color.g, color.b
         set_pixel = self.canvas.SetPixel
-        for y in range(y1, y2):
-            for x in range(x1, x2):
-                set_pixel(x, y, r, g, b)
+        if filled:
+            for y in range(y1, y2):
+                for x in range(x1, x2):
+                    set_pixel(x, y, r, g, b)
+        else:
+            self.draw_horizontal(y=y1, color=color, start=x1, stop=x2)
+            self.draw_horizontal(y=y2-1, color=color, start=x1, stop=x2)
+            outline_y1 = y1 + 1
+            for y in range(outline_y1, y2-1):
+                set_pixel(x=x1, y=y, r=r, g=g, b=b)
+                set_pixel(x=x2-1, y=y, r=r, g=g, b=b)
 
     def draw_text(
         self, 
@@ -202,6 +275,150 @@ class Matrix(object):
                     set_pixel(pixel_x, pixel_y, c.r, c.g, c.b)
                 else:
                     continue
+    
+    def draw_table(
+        self,
+        table: Table,
+        color: Color,
+    ) -> None:
+        """Draws a Table object to the LED Panel
+
+        Args:
+            table (Table): Table object
+            color (Color): Color of the border of the table
+        """
+        if isinstance(table.col_width, list):
+            total_width = sum(table.col_width) + len(table.col_width)
+        else:
+            total_width = (table.col_width * table.columns) + table.columns
+        
+        if isinstance(table.col_height, list):
+            total_height = sum(table.col_height) # + len(table.col_height)
+        else:
+            total_height = (table.col_height * table.rows) # + table.rows
+        
+        for row in range(table.rows):
+            if isinstance(table.col_height, list):
+                y = table.y + sum(table.col_height[:row+1])
+            else:
+                height_step = total_height // table.rows
+                y = table.y + height_step * (row + 1)
+            
+            self.draw_horizontal(
+                y=y + (row + 1),
+                color=color,
+                start=table.x,
+                stop=table.x+total_width+1
+            )
+        
+        for col in range(table.columns):
+            if isinstance(table.col_width, list):
+                x = table.x + sum(table.col_width[:col+1])
+            else:
+                # width_step = total_width // table.columns
+                x = table.x + table.col_width * (col + 1)
+            
+            self.draw_vertical(
+                x=x + (col+1),
+                color=color,
+                start=table.y,
+                stop=table.y+total_height + (table.rows + 1)
+            )
+        
+        self.draw_box(
+            x1=table.x,
+            y1=table.y,
+            x2=table.x+total_width+1,
+            y2=table.y+total_height + (table.rows + 1),
+            color=color,
+            filled=False
+        )
+    
+    def get_table(
+        self,
+        x: int,
+        y: int,
+        rows: int,
+        columns: int,
+        col_width: Union[int, List[int]],
+        col_height: Union[int, List[int]]
+    ) -> Table:
+        """Returns a Table object
+
+        Args:
+            x (int): X Position
+            y (int): Y Position
+            rows (int): Amount of rows
+            columns (int): Amount of columns
+            col_width (Union[int, List[int]]): Width of columns (optional: individual list)
+            col_height (Union[int, List[int]]): Height of columns (optional: individual list)
+
+        Returns:
+            Table: Table Object
+        """
+        return Table(
+            x=x,
+            y=y,
+            rows=rows,
+            columns=columns,
+            col_width=col_width,
+            col_height=col_height
+        )
+    
+    def set_table_col(
+        self,
+        text: str,
+        row: int,
+        column: int,
+        table: Table,
+        color: Color,
+        char_width: int,
+        char_height: int
+    ) -> None:
+        """Fills a table column with text
+
+        Args:
+            text (str): Text in the column
+            row (int): Row the column is in (0 is the first row)
+            column (int): Column the column is in (0 is the first column)
+            table (Table): Table Object
+            color (Color): Color of the text
+            char_width (int): Character width
+            char_height (int): Character height
+        """
+        if isinstance(table.col_width, list):
+            width = table.col_width[column]
+        else:
+            width = table.col_width
+        
+        if isinstance(table.col_height, list):
+            height = table.col_height[row]
+        else:
+            height = table.col_height
+        
+        if char_width > width or char_height > height:
+            log_event(
+                msg="Character width or character height is larger than table column.",
+                _level="WARN"
+            )
+            return
+        x, y = table.positions[row][column]
+        
+        # y + char_height = start_y of font, font starts at bottom
+        # ... + ((height - char_height) // 2) = font ends at ceiling of column
+        #                                       therefore move down to the center
+        y = y + char_height + ((height - char_height) // 2)
+        allowed_length = width // char_width
+        slice_idx = allowed_length if len(text) > allowed_length else len(text)
+        
+        self.draw_text(
+            x=x,
+            y=y + 1,
+            color=color,
+            text=text[:slice_idx],
+            char_width=char_width,
+            char_height=char_height
+        )
     
     def interpret_font_size(
         self, 

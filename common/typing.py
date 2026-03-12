@@ -1,4 +1,5 @@
 import time
+import dacite
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import (
@@ -198,3 +199,46 @@ class Box:
     x2: int
     y1: int
     y2: int
+
+
+@dataclass
+class HourlyWeather:
+    time: List[int]
+    temperature_2m: List[float]
+    precipitation_probability: List[float]
+    precipitation: List[float]
+
+
+@dataclass
+class CurrentWeather:
+    time: int
+    interval: int
+    temperature_2m: float
+    weather_code: int
+    precipitation: float
+
+
+@dataclass
+class Weather:
+    hourly: HourlyWeather
+    current: CurrentWeather
+    
+    @classmethod
+    def _from_dict(
+        cls,
+        data: dict
+    ) -> 'Weather':
+        return Weather(
+            hourly=dacite.from_dict(HourlyWeather, data["hourly"]),
+            current=dacite.from_dict(CurrentWeather, data["current"])
+        )
+
+
+@dataclass
+class Holiday:
+    name: str
+    start: datetime
+    end: datetime
+    
+    def __post_init__(self) -> None:
+        self.duration: timedelta = self.end - self.start

@@ -2,26 +2,29 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "3.6.0"
+__version__ = "4.0.0"
 
 # external imports
 import os
 import time
+from dotenv import load_dotenv
 from typing import (
     Callable,
     List,
 )
 
+load_dotenv()
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # local imports
-import core.hvv as hvv
 from core.enums import *
 from core.canvas import Matrix
 from core.visuals import *
 from core.dates import DateHandler
 from core.weather import WeatherAgent
 from core.pollen import DWDPollen
+from core.hvv import HVV
+from core.holidays import Holidays
 from common.logger import (
     log_event,
     log_decorator
@@ -30,6 +33,7 @@ from common.typing import (
     Box,
     StopableThread
 )
+from tests import pretty_tests
 from widgets.RainBar import RainBar
 from widgets.MatrixGraph import MatrixGraph
 
@@ -48,8 +52,9 @@ class Hyphen(Matrix):
         # Important classes
         self.date_handler = DateHandler()
         self.weather = WeatherAgent(self.date_handler)
-        self.hvv = hvv.HVV(self.date_handler)
+        self.hvv = HVV(self.date_handler)
         self.pollen = DWDPollen()
+        self.holidays = Holidays(self.date_handler)
 
         # Threads
         self.dt_thread = StopableThread(
@@ -67,10 +72,16 @@ class Hyphen(Matrix):
             target=self.hvv.set_bus_arrivals,
             daemon=True,
         )
+        self.holidays_thread = StopableThread(
+            interval=3600,
+            target=self.holidays.update,
+            daemon=True
+        )
 
         self.dt_thread.start()
         self.weather_thread.start()
         self.hvv_thread.start()
+        self.holidays_thread.start()
 
         self.welcome_message = f"""
         Welcome to my LED Panel program.
@@ -82,19 +93,12 @@ class Hyphen(Matrix):
         Have fun :)
         """
 
-    # def display_message(self, msg: str, timeout_duration: int = 10) -> None:
-    #     print("Displaying Message")
-
-    #     time.sleep(0.5)
-    #     self.clear()
-    #     self.draw_text(1, 36, 255, 255, 255, msg, 4, 6)
-    #     time.sleep(timeout_duration)
-
     def run(self) -> None:
         schedule: List[Callable] = [
             self.render_weather_page,
             self.render_bus_page,
             self.render_pollen_page,
+            self.render_holiday_page
         ]
         timer = 20.0
         idx = 0
@@ -213,7 +217,6 @@ class Hyphen(Matrix):
         pass
 
     def render_pollen_page(self) -> None:
-        self.pollen.update()
         sev = self.pollen.get_n_pollen(4)
         
         self.draw_text(
@@ -258,8 +261,69 @@ class Hyphen(Matrix):
                 char_height=6,
             )
 
-    def render_untis_page(self) -> None:
-        pass
+    def render_holiday_page(self) -> None:
+        # header = "Ferientage"
+        char_width = 4
+        char_height = 6
+        
+        next_holidays = self.holidays.next_n_holidays(3)
+        max_chars = 8
+        
+        table = self.get_table(
+            x=0,
+            y=0,
+            rows=3,
+            columns=3,
+            col_width=[32, 16, 12],
+            col_height=7
+        )
+        
+        self.draw_table(
+            table=table,
+            color=CLR_CLOUD_1
+        )
+        
+        for idx, holiday in enumerate(next_holidays):
+            name = holiday.name if len(holiday.name) <= max_chars else holiday.name[:max_chars]
+            if holiday.duration.days < 10:
+                duration = f" {holiday.duration.days}d"     # added a space so the "d" (days) is aligned
+            else:
+                duration = f"{holiday.duration.days}d"
+            
+            naive_date = self.date_handler.date.replace(tzinfo=None)
+            time_until = holiday.start - naive_date
+            free_spaces = (table.get_width(1) // 4) - len(str(time_until.days)) - 1 # 4 = char_width; -1 = the "d" after the day amount
+            time_until = " " * free_spaces + f"{time_until.days}d"
+            
+            self.set_table_col(
+                text=name,
+                row=idx,
+                column=0,
+                table=table,
+                color=CLR_CYAN,
+                char_width=char_width,
+                char_height=char_height
+            )
+            
+            self.set_table_col(
+                text=time_until,
+                row=idx,
+                column=1,
+                table=table,
+                color=CLR_RED,
+                char_width=char_width,
+                char_height=char_height
+            )
+            
+            self.set_table_col(
+                text=duration,
+                row=idx,
+                column=2,
+                table=table,
+                color=CLR_GREEN,
+                char_width=char_width,
+                char_height=char_height
+            )
 
     def render_weather_page(self) -> None:
         # draw weather icon
@@ -309,12 +373,7 @@ class Hyphen(Matrix):
 
 
 if __name__ == "__main__":
-    CHECK_UP = True
-
-    if CHECK_UP:
-        import tests
-
-        tests.pretty_tests()
+    pretty_tests()
 
     app = Hyphen()
     print(app.welcome_message)
@@ -324,7 +383,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log_event(
             msg="Uncaught Exception crashed the program.",
-            _level="FATAL"
+            _level="CRITICAL"
         )
 
 
@@ -359,7 +418,8 @@ if __name__ == "__main__":
                 - Delay                                                                 (X)
             - Pollen page                                                               (X)
             - Untis page                                                                (X)
-        - Build new UI                                                                  (IN PROGRESS...)
+            - Feiertage und Ferien page                                                 (X)
+        - Build new UI                                                                  (X)
             - Weather page                                                              (X)
                 - Lower box with time and temperature                                   (X)
                 - Weather icon                                                          (X)
@@ -379,9 +439,14 @@ if __name__ == "__main__":
                 - Show Pollen based on relevancy, not by hard coding them               (X)
                 - Fixed visual bug with the name clipping out of bounds                 (X)
             - Untis page                                                                (IN PROGRESS...)
+            - Ferien und Feiertage                                                      (X)
+                - Maybe try a table-style display?                                      (X)
+                    Okay, Tables are much more difficult than I thought
+                    - Use one big box and then draw lines instead of only draw_box      (X)
     Converter for images instead of large pixel matrices                                (X)
         - Built converter from .png to pixels                                           (X)
         - Fixed file path problem                                                       (X)
+        - Remove .pixel_matrix implementation. Instead use inheritance                  (X)
     Fix 24/7 Problem                                                                    (X)
         - Switch through windows/pages                                                  (X)
         - Fix weather requests on 12 am                                                 (FIX?)
@@ -389,13 +454,19 @@ if __name__ == "__main__":
             Now sometimes the weather data just doesn't load at all.                    (FIX?)
                 No Weather data from OpenMeteo? Try OpenMeteo implementation instead    (X)
         - HVV doesn't return "departures" sometimes, do better error handling           (X)
-        - Weather data does not update in real-time                                     (IN PROGRESS...)        <-- Continue here
+        - Weather data does not update in real-time                                     (X)
             Problem description:
-            After 12am the hour index sets back to 0 which gets the
-            items from the same day because it does not update properly
-            although it requests new data every 60 seconds on another thread and
-            the ID of the response also changes so obviously the data is new and
-            changes frequently but still wraps around to the same day
+                After 12am the hour index sets back to 0 which gets the
+                items from the same day because it does not update properly
+                although it requests new data every 60 seconds on another thread and
+                the ID of the response also changes so obviously the data is new and
+                changes frequently but still wraps around to the same day
+            Solution:
+                Ig what saved it is not relying on a cache by openmeteo because
+                then it will never update.
+                I also changed the way the temperature and percipitance is handled
+                because now depending on the method it will either use the hourly
+                forecast by openmeteo or the current weather data provided by openmeteo
     Optimization:                                                                       (X)
         - Optimize Selenium options                                                     (X)
         - Research if other browsers are faster                                         (X)
@@ -467,4 +538,8 @@ if __name__ == "__main__":
         - Use Asyncio instead                                                           (CANCELLED)
         - Instead, using StopableThread (typing.py) now                                 (X)
     Uptime monitor                                                                      (NOT STARTED YET)
+    Convert to .env                                                                     (X)
+    Compress isinstance() calls to one line in canvas.py                                (X)
+    Create Window/Page system/sandbox instead of hardcoding it                          (NOT STARTED YET)
+    Create an actually decent README.md lol                                             (IN PROGRESS...)
 """

@@ -10,6 +10,7 @@ wheels/
 .venv
 
 # Other
+.env
 .mypy_cache
 rgbmatrix
 .cache

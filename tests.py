@@ -236,5 +236,4 @@ def pretty_tests() -> None:
 
 if __name__ == "__main__":
     # test
-    print(_test_perms().msg)
-    print(_test_packages().msg)
+    pretty_tests()

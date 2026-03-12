@@ -1,6 +1,7 @@
 import platform
 import requests
 import dacite
+from os import environ
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -32,8 +33,8 @@ class HVV:
         self,
         dh: DateHandler
     ) -> None:
-        self.HVV_URL = "https://www.hvv.de/de/fahrplaene/abruf-fahrplaninfos/abfahrten-auf-ihrem-monitor/abfahrten-anzeige?show=028d4278b61c4485a4e6bd8c9a1c115e"
-        self.GEOFOX_URL = "https://www.hvv.de/geofox/departureList"
+        self.HVV_URL = environ.get("HVV_URL", "")
+        self.GEOFOX_URL = environ.get("GEOFOX_URL", "")
         self.busses: List[BusArrival] = []
         
         self.dh = dh

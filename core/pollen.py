@@ -1,4 +1,5 @@
 import requests
+from os import environ
 from typing import (
     Dict,
     List
@@ -13,7 +14,7 @@ from common.logger import log_event
 class DWDPollen:
     def __init__(self) -> None:
         self.region_ID = 10
-        self.URL = "https://opendata.dwd.de/climate_environment/health/alerts/s31fg.json"
+        self.URL = environ.get("POLLEN_URL", "")
         self.data: dict = requests.get(self.URL).json()
         self.sev_map: SeverityMap = {
             '0':    PollenSeverity('keine Belastung', Color(0, 255, 0)),

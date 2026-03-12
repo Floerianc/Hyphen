@@ -1,16 +1,18 @@
 [project]
 name = "Hyphen"
-version = "3.6.0"
+version = "4.0.0"
 description = "A LED-Panel App."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "attrs==25.3.0",
     "bdfparser==2.2.0",
+    "beautifulsoup4>=4.14.3",
     "cache-requests==4.0.0",
     "cattrs==25.1.1",
     "certifi==2025.11.12",
     "charset-normalizer==3.4.2",
+    "colorama>=0.4.6",
     "dacite>=1.9.2",
     "flatbuffers==25.2.10",
     "greenlet==3.3.0",
@@ -32,6 +34,7 @@ dependencies = [
     "pygame==2.6.1",
     "pysocks==1.7.1",
     "python-dateutil==2.9.0.post0",
+    "python-dotenv>=1.2.2",
     "pytz==2025.2",
     "qh3==1.5.3",
     "redis==6.2.0",
