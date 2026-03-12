@@ -212,8 +212,8 @@ class Matrix(object):
             self.draw_horizontal(y=y2-1, color=color, start=x1, stop=x2)
             outline_y1 = y1 + 1
             for y in range(outline_y1, y2-1):
-                set_pixel(x=x1, y=y, r=r, g=g, b=b)
-                set_pixel(x=x2-1, y=y, r=r, g=g, b=b)
+                set_pixel(x1, y, r, g, b)
+                set_pixel(x2-1, y, r, g, b)
 
     def draw_text(
         self, 

@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 # external imports
 import os
