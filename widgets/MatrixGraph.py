@@ -19,7 +19,7 @@ class MatrixGraph:
         width: int,
         height: int,
         max_value: Optional[int],
-        graph_color: Color,
+        graph_color: Union[Color, List[Color]],
         data: List[Union[int, float]]
     ) -> None:
         self.canvas = canvas
@@ -71,8 +71,8 @@ class MatrixGraph:
         gap = 1
         char_width = 4
         
-        min_x = self._get_absolute_x(0 - (gap + (char_width * len(str(minimum)))))
-        max_x = self._get_absolute_x(0 - (gap + (char_width * len(str(maximum)))))
+        min_x = self._get_absolute_x(1 - (gap + (char_width * len(str(minimum)))))
+        max_x = self._get_absolute_x(1 - (gap + (char_width * len(str(maximum)))))
         min_y = self._get_absolute_y(self.height)
         max_y = self._get_absolute_y(0 + 5)
         
@@ -122,6 +122,11 @@ class MatrixGraph:
         px_per_val = chart_height / adj_max
         
         for idx, value in enumerate(self.data):
+            if isinstance(self.color, list):
+                color = self.color[idx]
+            else:
+                color = self.color
+            
             x1 = start_x + (bar_width + gap) * idx
             x2 = x1 + bar_width
             
@@ -135,7 +140,7 @@ class MatrixGraph:
                 x2=x2,
                 y1=min(y1, y2),
                 y2=max(y1, y2),
-                color=self.color
+                color=color
             )
     
     def render(self) -> None:

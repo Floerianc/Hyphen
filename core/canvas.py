@@ -497,5 +497,7 @@ class Matrix(object):
         except KeyboardInterrupt:
             print("Exiting\n")
             sys.exit(0)
+        except BaseException as e:
+            raise e
 
         return True

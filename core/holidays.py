@@ -1,4 +1,3 @@
-import requests
 from os import environ
 from bs4 import BeautifulSoup
 from bs4._typing import _SomeTags
@@ -6,8 +5,12 @@ from datetime import (
     datetime,
     timedelta
 )
-from typing import List
+from typing import (
+    List,
+    Optional
+)
 from core.dates import DateHandler
+from core.proxy import SessionWrapper
 from common.typing import Holiday
 from common.logger import log_event
 
@@ -29,6 +32,8 @@ class Holidays:
         self.vacation_URL = environ.get("VACATION_URL", "")
         
         self.date_handler = dh
+        self.session = SessionWrapper(timeout=20)
+        
         self.sorted_holidays = []
         self.update()
     
@@ -40,7 +45,10 @@ class Holidays:
         Returns:
             List[Holiday]: List of Holidays
         """
-        rsp = requests.get(self.holiday_URL).json()
+        rsp = self.session.request(
+            "GET",
+            url=self.holiday_URL
+        ).json()
         if rsp["status"] != "success":
             log_event(
                 msg="API call to the Holiday URL failed. (Status != \"success\")",
@@ -69,8 +77,8 @@ class Holidays:
         vacations_this_year = []
         
         for vacation in self._scrape_vacations():
-            vacation_data = vacation.get("data-header")     # data-header attr in <div>
-            dates = vacation.find("span", class_="nowrap")  # <span>
+            vacation_data = vacation.get("data-header") + "ferien"      # data-header attr in <div>
+            dates = vacation.find("span", class_="nowrap")              # <span>
             if not dates or not vacation_data:
                 log_event(
                     msg="Couldn't find date or vacation data in vacation."
@@ -116,17 +124,27 @@ class Holidays:
             key=lambda h: h.start,
         )
     
-    def _scrape_vacations(self) -> _SomeTags:
+    @property
+    def is_holiday(self) -> bool:
+        return isinstance(self.current_holiday(), Holiday)
+    
+    def _scrape_vacations(self) -> List:
         """Scrapes the vacations from the given
         website URL
 
         Returns:
             _SomeTags: The elements containing the vacation data
         """
-        html_content = requests.get(self.vacation_URL)
+        html_content = self.session.request(
+            method="GET",
+            url=self.vacation_URL,
+        )
+        
         if not html_content.status_code == 200:
+            if html_content.status_code == 998:
+                log_event(f"Blocked by URL \"{self.vacation_URL}\"", "FATAL")
             log_event(
-                msg="Request to vacations URL failed.",
+                msg=f"Request to vacations URL failed. Error code: \"{html_content.status_code}\"",
                 _level="ERROR"
             )
             return _SomeTags(None)
@@ -199,6 +217,15 @@ class Holidays:
             else:
                 continue
         return []
+    
+    def current_holiday(self) -> Optional[Holiday]:
+        for holiday in self.sorted_holidays:
+            start = holiday.start.timestamp()
+            if start <= self.date_handler.date.timestamp() <= holiday.end.timestamp():
+                return holiday
+            if start > self.date_handler.date.timestamp():
+                return None
+        return None
     
     def update(self) -> None:
         holidays = self.next_holidays

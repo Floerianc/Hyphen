@@ -2,11 +2,14 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "4.0.1"
+__version__ = "5.0.0"
 
 # external imports
+import math
 import os
 import time
+import traceback
+import threading
 from dotenv import load_dotenv
 from typing import (
     Callable,
@@ -17,6 +20,7 @@ load_dotenv()
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # local imports
+from core.dawum import DAWUM
 from core.enums import *
 from core.canvas import Matrix
 from core.visuals import *
@@ -37,8 +41,19 @@ from tests import pretty_tests
 from widgets.RainBar import RainBar
 from widgets.MatrixGraph import MatrixGraph
 
-# sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
+def error_exit_routine(exc: BaseException) -> None:
+    log_event(
+        msg="Uncaught Exception crashed the program.",
+        _level="CRITICAL"
+    )
+    formatted_exc = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    print(formatted_exc)
+    log_event(msg=formatted_exc, _level="CRITICAL")
 
+def thread_exc_handler(args):
+    error_exit_routine(args.exc_value)
+
+threading.excepthook = thread_exc_handler
 
 class Hyphen(Matrix):
     @log_decorator("Initializing Program...")
@@ -55,6 +70,7 @@ class Hyphen(Matrix):
         self.hvv = HVV(self.date_handler)
         self.pollen = DWDPollen()
         self.holidays = Holidays(self.date_handler)
+        self.dawum = DAWUM()
 
         # Threads
         self.dt_thread = StopableThread(
@@ -68,7 +84,7 @@ class Hyphen(Matrix):
             daemon=True,
         )
         self.hvv_thread = StopableThread(
-            interval=15,
+            interval=(15, 45),
             target=self.hvv.set_bus_arrivals,
             daemon=True,
         )
@@ -77,11 +93,17 @@ class Hyphen(Matrix):
             target=self.holidays.update,
             daemon=True
         )
+        self.dawum_thread = StopableThread(
+            interval=3600,
+            target=self.dawum.update,
+            daemon=True
+        )
 
         self.dt_thread.start()
         self.weather_thread.start()
         self.hvv_thread.start()
         self.holidays_thread.start()
+        self.dawum_thread.start()
 
         self.welcome_message = f"""
         Welcome to my LED Panel program.
@@ -97,8 +119,9 @@ class Hyphen(Matrix):
         schedule: List[Callable] = [
             self.render_weather_page,
             self.render_bus_page,
+            self.render_barometer_page,
             self.render_pollen_page,
-            self.render_holiday_page
+            self.render_holiday_page,
         ]
         timer = 20.0
         idx = 0
@@ -107,7 +130,6 @@ class Hyphen(Matrix):
 
         self.canvas = self.matrix.CreateFrameCanvas()
         while True:
-            # FIXME: Very CPU expensive
             now = time.monotonic()
             if now >= switch_time:
                 idx = (idx + 1) % len(schedule)
@@ -146,7 +168,7 @@ class Hyphen(Matrix):
 
     def render_bus_page(self) -> None:
         next_busses = self.hvv.next_busses
-        if len(next_busses) > 0:
+        if len(next_busses) > 0 and not self.hvv.sleeping:
             for idx, bus in enumerate(next_busses):
                 # bus line logo
                 img_start_x = 1
@@ -173,13 +195,13 @@ class Hyphen(Matrix):
                     x=name_x,
                     y=name_y,
                     color=CLR_WHITE,
-                    text=bus.destination.replace(" ", "")[0:3],
+                    text=bus.destination.replace(" ", "")[0:5],
                     char_width=4,
                     char_height=6,
                 )
 
                 # time of arrival
-                arrival_x = name_x + 12 + 1  # 12 = length of destination text, 1 = gap
+                arrival_x = name_x + 20 + 2  # 12 = length of destination text, 1 = gap
                 arrival_y = name_y
                 self.draw_text(
                     x=arrival_x,
@@ -191,19 +213,28 @@ class Hyphen(Matrix):
                 )
 
                 # delay
-                delay_x = arrival_x + 20 + 1  # 20 = length of time of arrival text, 1 = gap
-                delay_y = arrival_y
-                delay_minutes = round(bus.delay.seconds / 60)
-                delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
-                self.draw_text(
-                    x=delay_x,
-                    y=delay_y,
-                    color=delay_clr,
-                    text=f"+{delay_minutes}",
-                    char_width=4,
-                    char_height=6,
-                )
-        elif len(next_busses) <= 0:
+                # delay_x = arrival_x + 20 + 1  # 20 = length of time of arrival text, 1 = gap
+                # delay_y = arrival_y
+                # delay_minutes = round(bus.delay.seconds / 60)
+                # delay_clr = CLR_GREEN if delay_minutes <= 0 else CLR_RED
+                # self.draw_text(
+                #     x=delay_x,
+                #     y=delay_y,
+                #     color=delay_clr,
+                #     text=f"+{delay_minutes}",
+                #     char_width=4,
+                #     char_height=6,
+                # )
+        elif self.hvv.sleeping:
+            self.draw_text(
+                x=2,
+                y=16,
+                color=CLR_RED,
+                text="Schlafenszeit:)",
+                char_width=4,
+                char_height=6
+            )
+        else:
             self.draw_text(
                 x=2,
                 y=16,
@@ -242,21 +273,19 @@ class Hyphen(Matrix):
 
             pollen = severity[0]
             pollen_severity = severity[1]
-            letters = len(pollen)  # name of pollen
+            letters = len(pollen) if len(pollen) < 8 else 7  # name of pollen
 
-            if idx < round(len(positions) / 2): # if we are on the first half of positions, we're on the left sind
+            if idx < round(len(positions) / 2): # if we are on the first half of positions, we're on the left side
                 x = box.x1 + ((7 - letters) * 4)
             else:  # right side
                 x = box.x1
             y = box.y2
             
-            name_slice = len(pollen) if len(pollen) < 8 else 7
-            
             self.draw_text(
                 x=x,
                 y=y,
                 color=pollen_severity.color,
-                text=pollen[:name_slice],
+                text=pollen[:letters],
                 char_width=4,
                 char_height=6,
             )
@@ -324,6 +353,19 @@ class Hyphen(Matrix):
                 char_width=char_width,
                 char_height=char_height
             )
+            
+            if current_holiday := self.holidays.current_holiday():
+                max_chars = 15
+                remaining_days = math.floor((current_holiday.end.timestamp() - self.date_handler.date.timestamp()) / 86400) + 1 # <-- include current day
+                remaining_str = f"({remaining_days}d)"
+                holiday_chars = max_chars - len(remaining_str)
+                if len(current_holiday.name) > holiday_chars:
+                    holiday_str = "".join([current_holiday.name[0:holiday_chars-1],"-"])
+                else:
+                    holiday_str = current_holiday.name
+                
+                self.draw_box(x1=0, y1=25, x2=64, y2=32, color=CLR_GREEN)
+                self.draw_text(x=2, y=31, color=CLR_BLACK, text=f"{holiday_str}{remaining_str}", char_width=4, char_height=6) # type: ignore
 
     def render_weather_page(self) -> None:
         # draw weather icon
@@ -370,6 +412,43 @@ class Hyphen(Matrix):
             data=self.weather.temperature_forecast(6),
         )
         temperature_graph.render()
+    
+    def render_barometer_page(self) -> None:
+        # Render Title
+        if not self.dawum.latest_survey:
+            return
+        
+        parliament = self.dawum.latest_survey.Parliament
+        max_length = 15
+        text = parliament[:max_length]
+        char_width = 4
+        
+        x = round(((2 + (max_length * char_width)) - (char_width * len(text))) / 2)
+        
+        self.draw_text(
+            x=x,
+            y=6,
+            color=CLR_WHITE,
+            text=text,
+            char_width=4,
+            char_height=6
+        )
+        
+        # Render Graph
+        
+        party_values = [float(value) for value in self.dawum.latest_survey.Results.values()]
+        
+        voting_graph = MatrixGraph(
+            canvas=self,
+            x=9, # 2,
+            y=6,
+            width=54,# 60,
+            height=18,
+            max_value=int(max(party_values)),
+            graph_color=self.dawum.get_colors(self.dawum.latest_survey),
+            data=party_values
+        )
+        voting_graph.render()
 
 
 if __name__ == "__main__":
@@ -380,12 +459,8 @@ if __name__ == "__main__":
 
     try:
         app.process()
-    except KeyboardInterrupt:
-        log_event(
-            msg="Uncaught Exception crashed the program.",
-            _level="CRITICAL"
-        )
-
+    except BaseException as exc:
+        error_exit_routine(exc)
 
 """ TODO
     Clean Structure of the project                                                      (X)
@@ -407,8 +482,8 @@ if __name__ == "__main__":
     Fix Color dataclass                                                                 (X)
         - Turned the Color declaration into a viable dataclass                          (X)
         - Overwrite "tuple" with Color type hint                                        (X)
-    Commit to the new UI idea                                                           (IN PROGRESS...)
-        - Make rough ideas in Paint.NET or smth                                         (IN PROGRESS...)
+    Commit to the new UI idea                                                           (X)
+        - Make rough ideas in Paint.NET or smth                                         (X)
             - Weather page                                                              (X)
             - News page                                                                 (IN PROGRESS...)
             - Bus line page                                                             (X)
@@ -419,6 +494,7 @@ if __name__ == "__main__":
             - Pollen page                                                               (X)
             - Untis page                                                                (X)
             - Feiertage und Ferien page                                                 (X)
+            - Politikbarometer                                                          (X)
         - Build new UI                                                                  (X)
             - Weather page                                                              (X)
                 - Lower box with time and temperature                                   (X)
@@ -443,6 +519,9 @@ if __name__ == "__main__":
                 - Maybe try a table-style display?                                      (X)
                     Okay, Tables are much more difficult than I thought
                     - Use one big box and then draw lines instead of only draw_box      (X)
+                - Added a container to show current holiday / vacation                  (X)
+                - Made the text black for more contrast                                 (X)
+            - Politikbarometer                                                          (X)
     Converter for images instead of large pixel matrices                                (X)
         - Built converter from .png to pixels                                           (X)
         - Fixed file path problem                                                       (X)
@@ -516,6 +595,8 @@ if __name__ == "__main__":
             Test rgbmatrix                                                              (X)
             Test HVV response                                                           (X)
             Test fonts                                                                  (X)
+            Test DAWUM                                                                  (X)
+            Test Proxy                                                                  (X)
     EVEN MORE FUCKING FLICKERING WOOOOO                                                 (X)
         Rework the FUCKING Core again                                                   (Actually nah)
             Canvas.py                                                                   (X)
@@ -540,6 +621,43 @@ if __name__ == "__main__":
     Uptime monitor                                                                      (NOT STARTED YET)
     Convert to .env                                                                     (X)
     Compress isinstance() calls to one line in canvas.py                                (X)
-    Create Window/Page system/sandbox instead of hardcoding it                          (NOT STARTED YET)
     Create an actually decent README.md lol                                             (IN PROGRESS...)
+    Avoid HVV IP Ban :(                                                                 (X)
+        5 Stage Scraper:                                                                (IN PROGRESS...)
+            1. Identity masking (Disguise as Browser)                                   (X) <-- RequestWrapper
+            UA: https://explore.whatismybrowser.com/useragents/explore/
+            2. Randomized interval between requests                                     (X) <-- Threads choose random interval
+            3. Sleep between 10pm - 5am                                                 (X) <-- hvv.py disallows requests, might move over to requestwrapper
+            4. Proxy rotation                                                           (IN PROGRESS...)
+                - Build integration for own proxies                                     (IN PROGRESS...)
+                - Build integration for Decodo paid proxies                             (IN PROGRESS...)
+                https://decodo.com/blog/mastering-python-requests/                      (IN PROGRESS...)
+            5. Random Retrying (different Headers, Proxies etc.)                        (X)
+        Create a class which is a wrapper or overhead requests class so proxies shared  (X)
+            - Allow for dynamic payloads. They're not static but can be changed by user (X)
+            - Replace requests with RequestWrapper in classes that scrape               (X)
+    DAWUM Implementation                                                                (X)
+        - Correctly center the Parliament title                                         (X)
+        - Maybe change a few colors so it's easy to distinguish or add text labels on x (X)
+        - Show max percentage of party like in the weather graphs                       (X)
+        - Fuck classes lmao just make it a function for no reason                       (X)
+            - Turned it into a class again award                                        (X)
+        - Make it so it only shows up until 5% and Others because who cares             (X)
+            - Show others                                                               (X)
+            - Show only up until 5%                                                     (X)
+        - Add color coded parties                                                       (X)
+            - Rewrite MatrixGraph                                                       (X)
+        - Only show Bundestag                                                           (X)
+        - Maybe add optional flags for certain states                                   (X)
+        - Maybe remove the FormattedSurvey class and just format immediately            (X)
+    - Force "Schlafenszeit" screen when in Schlafenszeit instead of showing old rsp     (X)
+    - Fix display for "Ambrosia" (one shifted to the left and not aligned anymore)      (X)
+    - Show remaining days of current vacation / holiday.                                (X)
+    - Create running text                                                               (X)
+    
+    Long-term ideas:
+        Create a page system
+        Create a GUI to create own pages
+        Add schedule to a config file
+        Disable pages through command line arguments
 """

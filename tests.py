@@ -1,6 +1,9 @@
 import platform
+import traceback
 import pkg_resources
 import os
+
+from core import proxy
 
 os.chdir(
     os.path.dirname(
@@ -9,19 +12,23 @@ os.chdir(
 )
 
 from dataclasses import dataclass
+from dotenv import load_dotenv
 from colorama import Fore
 from typing import (
     Callable,
     List
 )
 
+import core.dawum as dawum
 from core.hvv import HVV
 from core.weather import WeatherAgent
 from core.dates import DateHandler
+from core.holidays import Holidays
 from core.canvas import Matrix
 from common.typing import Color
 from util.utils import FONT_PATH
 
+load_dotenv()
 
 @dataclass
 class TestResult:
@@ -144,13 +151,39 @@ def _test_weather_rsp() -> TestResult:
     """
     try:
         w = WeatherAgent(DateHandler())
-        w.weather
+        # w.weather
+        w.hourly_variable_len
         w.current_temperature
         w.hour_index
         w.precipitation
         w.rain_forecast_avg
         w.precipitation_forecast(6)
+        w._fetch_weather()
         return TestResult(True, "Success!")
+    except Exception as e:
+        return TestResult(False, str(e))
+
+def _test_dawum() -> TestResult:
+    try:
+        if os.environ.get("DAWUM_URL", ""):
+            d = dawum.DAWUM()
+            d.update()
+            return TestResult(True, "Success!")
+        else:
+            return TestResult(False, "URL can not be found in os.environ")
+    except Exception as e:
+        return TestResult(False, str(e))
+
+def _test_proxy() -> TestResult:
+    try:
+        session = proxy.SessionWrapper(timeout=20)
+        request = proxy.RequestWrapper(timeout=20)
+        rsp = request.request("GET", "https://example.com/", {})
+        rsp2 = session.request("GET", "https://example.com", {})
+        if rsp and rsp2:
+            return TestResult(True, "Success!")
+        else:
+            return TestResult(False, f"Invalid responses; 1: {rsp.text}\t2: {rsp.text}")
     except Exception as e:
         return TestResult(False, str(e))
 
@@ -199,10 +232,6 @@ def _test_packages() -> TestResult:
     packages = list(installed_packages.keys())
     distributions = list(installed_packages.values())
     for requirement in requirements:
-        # try:        # python script via UV
-        #     uv_env = os.environ["UV"]
-        # except:
-        #     pass    # regular python script
         package, version = requirement.split("==")
         version = version.removesuffix("\n")
         if package in packages:
@@ -220,20 +249,33 @@ def _test_packages() -> TestResult:
     else:
         return TestResult(False, f"Missing:\t{missing},\n\t\t\t\tMismatches: {mismatches}")
 
+def _test_holidays() -> TestResult:
+    try:
+        h = Holidays(DateHandler())
+        h.update()
+        h.next_n_holidays(2)
+        return TestResult(True, f"Success!")
+    except Exception as e:
+        return TestResult(False, str(e))
+
 def pretty_tests() -> None:
     tests: List[Callable] = [
         _test_weather_cache,
         _test_hvv,
+        _test_holidays,
         _test_imports,
         _test_fonts,
         _test_weather_rsp,
         _test_matrix,
         _test_perms,
-        _test_packages
+        _test_packages,
+        _test_dawum,
+        _test_proxy
     ]
     for test in tests:
         print(f"Running Test {Fore.LIGHTGREEN_EX}\"{test.__name__}\"{Fore.RESET}\t{test().msg}")
 
 if __name__ == "__main__":
     # test
-    pretty_tests()
+    # pretty_tests()
+    print(dawum.DAWUM().format_survey(dawum.DAWUM().get_latest_survey()))

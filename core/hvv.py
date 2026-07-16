@@ -1,6 +1,6 @@
 import platform
-import requests
 import dacite
+import random
 from os import environ
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,6 +13,7 @@ from typing import List
 
 import util.utils as utils
 from core.dates import DateHandler
+from core.proxy import SessionWrapper
 from common.typing import (
     BusArrival,
     GeoFoxResponse,
@@ -35,9 +36,12 @@ class HVV:
     ) -> None:
         self.HVV_URL = environ.get("HVV_URL", "")
         self.GEOFOX_URL = environ.get("GEOFOX_URL", "")
+        self.sleep_time = (22, 6)
+        self.sleeping = False
         self.busses: List[BusArrival] = []
         
         self.dh = dh
+        self.session = SessionWrapper(timeout=20)
 
     @property
     def geofox_header(self) -> dict:
@@ -46,10 +50,19 @@ class HVV:
         Returns:
             dict: HTTP Header
         """
+        
+        UAs = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.111 Safari/537.36 Brave/1.75.175",
+            "Mozilla/5.0 (Windows NT 11.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.84 Safari/537.36 Brave/1.75.175",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3563.62 Safari/537.36"
+        ]
+        
         return {
             "Accept": "application/json",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+            "User-Agent": random.choice(UAs),
         }
     
     @property
@@ -303,11 +316,10 @@ class HVV:
         """
         rsp = None
         try:
-            rsp = requests.post(
+            rsp = self.session.request(
+                method="POST",
                 url=self.GEOFOX_URL,
-                headers=self.geofox_header,
-                json=self.geofox_payload,
-                timeout=20
+                json=self.geofox_payload
             ).json()
             return self._convert_response(data=rsp)
         except Exception as e:
@@ -321,8 +333,16 @@ class HVV:
                 log_event(f"No response from HVV GeoFox. Can't return bus times.\nException: {e}")
                 return GeoFoxResponse("NOT OK", GeoFoxTime("00.00.0000", "00:00"), [])
     
-    @log_decorator("Getting bus arrivals...")
     def set_bus_arrivals(self) -> None:
+        if self.dh.date.hour >= self.sleep_time[0] or self.dh.date.hour < self.sleep_time[1]:
+            self.sleeping = True
+            log_event("No bus arrivals (Sleeping...)")
+            return
+        else:
+            self.sleeping = False
+            log_event("Getting bus arrivals...")
+        
+        
         rsp = self.get_geofox_response()
         if rsp:
             self.busses = self._parse_geofox_data(rsp)

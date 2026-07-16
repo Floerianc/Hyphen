@@ -1,5 +1,6 @@
 import time
 import dacite
+import random
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import (
@@ -11,6 +12,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     Tuple,
     Optional,
@@ -44,6 +46,29 @@ class Color:
         value: Tuple[int, int, int]
     ) -> None:
         self.r, self.g, self.b = value
+
+    @property
+    def hex(self) -> str:
+        return "#{:02x}{:02x}{:02x}".format(self.r, self.g, self.b)
+
+    @hex.setter
+    def hex(self, value: str) -> None:
+        value = value.lstrip("#")
+        if len(value) != 6:
+            raise ValueError("Hex color must be 6 characters long")
+        self.r = int(value[0:2], 16)
+        self.g = int(value[2:4], 16)
+        self.b = int(value[4:6], 16)
+
+    @classmethod
+    def from_hex(cls, hexcode: str) -> "Color":
+        hexcode = hexcode.lstrip("#")
+        if len(hexcode) != 6:
+            raise ValueError("Hex color must be 6 characters long")
+        r = int(hexcode[0:2], 16)
+        g = int(hexcode[2:4], 16)
+        b = int(hexcode[4:6], 16)
+        return cls(r, g, b)
 
 @dataclass
 class Pixel:
@@ -147,7 +172,7 @@ class GeoFoxResponse:
 class StopableThread(Thread):
     def __init__(
         self,
-        interval: Union[float, int],
+        interval: Union[float, int, tuple[int, int]],
         group: None = None,
         target: Callable[..., object] | None = None,
         name: str | None = None,
@@ -156,6 +181,7 @@ class StopableThread(Thread):
         *,
         daemon: bool | None = None,
     ) -> None:    # type: ignore
+        if isinstance(interval, tuple): assert len(interval) == 2
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         self.stop: bool = False
         self.target = target
@@ -170,14 +196,19 @@ class StopableThread(Thread):
         self.stop = boolean
     
     def run(self) -> None:
-        next_time = time.time() + self.interval
+        if isinstance(self.interval, tuple):
+            interval = random.uniform(self.interval[0], self.interval[1])
+        else:
+            interval = self.interval
+        
+        next_time = time.time() + interval
         while True and not self.stopped and self.target:
             time.sleep(max(0, next_time - time.time()))
             try:
                 self.target(*self.args)
             except Exception:
                 log_event("Error while executing repetitive method.", "ERROR")
-            next_time += (time.time() - next_time) // self.interval * self.interval + self.interval
+            next_time += (time.time() - next_time) // interval * interval + interval
         else:
             ...
 
@@ -189,8 +220,8 @@ class PollenSeverity:
     description: str
     color: Color
 
-
-SeverityMap = Dict[str, PollenSeverity]
+SevLevel = Literal["0", "0-1", "1", "1-2", "2", "2-3", "3", "NDF"]
+SeverityMap = Dict[SevLevel, PollenSeverity]
 
 
 @dataclass
