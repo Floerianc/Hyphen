@@ -107,6 +107,8 @@ class DAWUM:
 
     def _convert_response(self, data: dict) -> Survey:
         relevant_results = self._only_relevant(data["Results"])
+        results = {self.PARTIES.get(party, {})["Shortcut"]: value for party, value in relevant_results.items()}
+        results["Sonstige"] = results.pop("Sonstige")
         
         return Survey(
             Date=datetime.strptime(data["Date"], "%Y-%m-%d"),
@@ -116,7 +118,7 @@ class DAWUM:
             Institute=self.INSTITUTES.get(data["Institute_ID"], {"Name": ""})["Name"],
             Tasker=self.TASKERS.get(data["Tasker_ID"], {"Name": ""})["Name"],
             Method=self.METHODS.get(data["Method_ID"], {"Name": ""})["Name"],
-            Results={self.PARTIES.get(party, {})["Shortcut"]: value for party, value in relevant_results.items()}
+            Results=results
         )
     
     def update(self) -> None:

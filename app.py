@@ -2,7 +2,7 @@
 # Program entirely written by github.com/Floerianc
 # +++ Run as root! +++
 
-__version__ = "5.0.0"
+__version__ = "5.0.1"
 
 # external imports
 import math
@@ -117,9 +117,9 @@ class Hyphen(Matrix):
 
     def run(self) -> None:
         schedule: List[Callable] = [
+            self.render_barometer_page,
             self.render_weather_page,
             self.render_bus_page,
-            self.render_barometer_page,
             self.render_pollen_page,
             self.render_holiday_page,
         ]
@@ -356,7 +356,7 @@ class Hyphen(Matrix):
             
             if current_holiday := self.holidays.current_holiday():
                 max_chars = 15
-                remaining_days = math.floor((current_holiday.end.timestamp() - self.date_handler.date.timestamp()) / 86400) + 1 # <-- include current day
+                remaining_days = math.ceil((current_holiday.end.timestamp() - self.date_handler.date.timestamp()) / 86400) + 1 # <-- include current day
                 remaining_str = f"({remaining_days}d)"
                 holiday_chars = max_chars - len(remaining_str)
                 if len(current_holiday.name) > holiday_chars:
@@ -654,6 +654,7 @@ if __name__ == "__main__":
     - Fix display for "Ambrosia" (one shifted to the left and not aligned anymore)      (X)
     - Show remaining days of current vacation / holiday.                                (X)
     - Create running text                                                               (X)
+    - Fixed the order of the parties in the barometer page so "Sonstige" is always last (X)
     
     Long-term ideas:
         Create a page system
